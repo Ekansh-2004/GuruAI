@@ -6,3 +6,5 @@ faiss-cpu
 pypdf
 docx2txt
 python-dotenv
+langchain-huggingface
+sentence-transformers
