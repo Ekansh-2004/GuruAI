@@ -1,0 +1,36 @@
+{
+  "topics": {
+    "Halstead Counting": {
+      "correct": 0,
+      "total": 1
+    },
+    "Halstead Variables": {
+      "correct": 0,
+      "total": 1
+    },
+    "Software Metrics": {
+      "correct": 0,
+      "total": 1
+    },
+    "Halstead Formulas": {
+      "correct": 0,
+      "total": 1
+    },
+    "Strips States": {
+      "correct": 0,
+      "total": 1
+    },
+    "Strips Actions": {
+      "correct": 0,
+      "total": 1
+    },
+    "Plan Components": {
+      "correct": 1,
+      "total": 1
+    },
+    "Situation Calculus": {
+      "correct": 1,
+      "total": 1
+    }
+  }
+}
