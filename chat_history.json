@@ -1,48 +1,43 @@
 {
-  "70935ce0-e044-4a1e-afdc-3a3fd593e60f": {
-    "title": "what is classification pr...",
+  "2c471fb6-7eea-4f2c-8004-eba77ed7ee0a": {
+    "title": "What is OS Command Inject...",
     "messages": [
       {
         "role": "user",
-        "content": "what is classification problem"
+        "content": "What is OS Command Injection?"
       },
       {
         "role": "assistant",
-        "content": "[Textbook]\nA classification problem is a type of machine learning problem where the goal is to predict a categorical output (or \"class\") for a given input.\n\nThe textbook identifies two main types:\n*   **Binary classification:** The output can only be one of two classes, typically represented as $y = 0$ or $y = 1$.\n*   **Multi-class classification:** The output can be one of multiple classes, represented as $y = 0, 1, 2, \\ldots, N$.\n\nExamples of classification problems include disease detection, fraudulent transaction detection, and intrusion detection."
-      },
-      {
-        "role": "user",
-        "content": "The decision boundary is a property of  ____________, fill up"
-      },
-      {
-        "role": "assistant",
-        "content": "[Textbook]\nThe decision boundary is a property of **Hypothesis and the parameters**."
+        "content": "[Textbook] OS command injection, also known as shell injection, is a web security vulnerability that allows an attacker to execute arbitrary commands on the host operating system (OS) of a server running a vulnerable application. This type of vulnerability can lead to a full compromise of the application and its data."
       }
     ],
-    "updated_at": "2026-03-29 19:23:43.159676"
-  },
-  "b721e539-0e9e-409b-b111-a45af5eb9f7b": {
-    "title": "what is the pdf saying",
-    "messages": [
-      {
-        "role": "user",
-        "content": "what is the pdf saying"
-      },
-      {
-        "role": "assistant",
-        "content": "The provided PDF context is discussing **Halstead's Theory** within the \"Software Project Management\" unit.\n\nHere's a summary of what the PDF is saying:\n\n*   **Purpose:** Halstead's Theory is used to evaluate the **complexity of software** by providing a quantitative assessment. [Textbook]\n*   **Core Idea:** It views a program as a collection of **tokens**, which are categorized into **operators** and **operands**. [Textbook]\n*   **Metrics:** The theory uses several metrics to measure different aspects of software complexity, including:\n    *   **Vocabulary (n):** The total number of unique operators (`n1`) and unique operands (`n2`). `n = n1 + n2` [Textbook]\n    *   **Program Length (N):** The total number of all operator occurrences (`N1`) and all operand occurrences (`N2`). `N = N1 + N2` [Textbook]\n    *   **Program Volume (V):** Defined as the minimum number of bits needed to encode the program. [Textbook]\n        *   Formula: `V = N * log2n` [Textbook]\n    *   **Program Level (L):** Described as the ratio of the number of operator occurrences to the number of operand occurrences. [Textbook]\n        *   Formula: `L = n1/n2` (Note: The definition and formula here might seem to refer to different counts - unique vs. occurrences - but this is what the textbook states.) [Textbook]\n    *   **Program Difficulty (D):** Defined as the ratio of the number of unique operators to the total number of operators in the program, scaled by operand counts. [Textbook]\n        *   Formula: `D = (n1/2) * (N2/n2)` [Textbook]\n    *   **Program Effort (E):** The product of program volume (V) and program difficulty (D). [Textbook]\n        *   Formula: `E = V * D` [Textbook]\n*   **Application:** The document includes an \"Example-1\" that demonstrates the calculation of Vocabulary, Program Length, and Program Volume using specific numerical values. [Textbook]"
-      }
-    ],
-    "updated_at": "2026-03-29 19:41:47.797698",
     "topic_scores": {
-      "Software Metrics": {
-        "correct": 2,
-        "total": 3
+      "Web Security": {
+        "correct": 0,
+        "total": 2
       },
-      "Software Engineering": {
+      "Vulnerability Analysis": {
+        "correct": 1,
+        "total": 1
+      },
+      "System Security": {
         "correct": 1,
         "total": 1
       }
-    }
+    },
+    "documents": [
+      {
+        "name": "OS command injection.pdf",
+        "size": 4123095
+      }
+    ],
+    "updated_at": "2026-03-30 15:14:02.472344"
+  },
+  "56eff431-3951-4df8-a704-846f46c177f4": {
+    "title": "New Chat",
+    "messages": [],
+    "topic_scores": {},
+    "documents": [],
+    "updated_at": "2026-03-30 15:14:37.656121"
   }
 }

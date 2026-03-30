@@ -17,7 +17,7 @@ def get_embeddings():
 
 def create_vectorstore(docs, session_id: str):
     """Build FAISS index and save it permanently to the hard drive for the session."""
-    st.info("Generating local embeddings and saving to disk...")
+    print("Generating local embeddings and saving to disk...")
     embeddings = get_embeddings()
     vectorstore = FAISS.from_documents(docs, embeddings)
     

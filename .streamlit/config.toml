@@ -1,0 +1,15 @@
+[theme]
+# The primary accent color (Neon Purple)
+primaryColor = "#d095ff"
+
+# The main background (The Deep Void)
+backgroundColor = "#0e0e10"
+
+# The sidebar and secondary background (Surface Container Low)
+secondaryBackgroundColor = "#131315"
+
+# The main text color
+textColor = "#f6f3f5"
+
+# Base font
+font = "sans serif"

@@ -1,4 +1,3 @@
-import streamlit as st
 import json
 import os
 import uuid
@@ -34,7 +33,8 @@ def create_session(title="New Chat") -> str:
     data[session_id] = {
         "title": title,
         "messages": [],
-        "topic_scores": {},  # Track scores specifically for this session
+        "topic_scores": {}, 
+        "documents": [], # <-- ADD THIS LINE
         "updated_at": str(datetime.now())
     }
     save_all_sessions(data)
@@ -74,6 +74,23 @@ def delete_session(session_id: str):
             shutil.rmtree(db_path)
         except Exception as e:
             print(f"Error removing db folder: {e}")
+
+def add_document(session_id: str, filename: str, size: int):
+    """Save the uploaded document's metadata to the session."""
+    data = load_all_sessions()
+    if session_id in data:
+        if "documents" not in data[session_id]:
+            data[session_id]["documents"] = []
+            
+        # Prevent duplicate entries in the UI if the same file is re-uploaded
+        if not any(d["name"] == filename for d in data[session_id]["documents"]):
+            data[session_id]["documents"].append({"name": filename, "size": size})
+        save_all_sessions(data)
+
+def get_session_documents(session_id: str) -> list:
+    """Retrieve the list of documents for a specific session."""
+    data = load_all_sessions()
+    return data.get(session_id, {}).get("documents", [])
 
 # --- Global Student Profile / Knowledge Base ---
 
