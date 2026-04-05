@@ -434,8 +434,10 @@
                 if (ids.length === 0) {
                     const res = await fetch(`${API}/api/sessions`, { method: "POST" }).then((r) => r.json());
                     activeSessionId = res.session_id;
+                    localStorage.setItem("lastSessionId", activeSessionId);
                 } else {
                     activeSessionId = ids[ids.length - 1];
+                    localStorage.setItem("lastSessionId", activeSessionId);
                 }
                 renderSessions(sessions);
                 loadMessages(activeSessionId);
@@ -460,6 +462,7 @@
             window.newSession = async function () {
                 const res = await fetch(`${API}/api/sessions`, { method: "POST" }).then((r) => r.json());
                 activeSessionId = res.session_id;
+                localStorage.setItem("lastSessionId", activeSessionId);
                 const sessions = await fetch(`${API}/api/sessions`).then((r) => r.json());
                 renderSessions(sessions);
                 document.getElementById("chat-feed").innerHTML = "";
@@ -469,6 +472,7 @@
 
             async function switchSession(id) {
                 activeSessionId = id;
+                localStorage.setItem("lastSessionId", id);
                 const sessions = await fetch(`${API}/api/sessions`).then((r) => r.json());
                 renderSessions(sessions);
                 loadMessages(id);

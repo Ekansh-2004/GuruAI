@@ -12,6 +12,7 @@ from src.rag.loader import load_documents
 from src.rag.embedder import create_vectorstore, load_existing_vectorstore
 from src.rag.chain import build_rag_chain
 from src.rag.quiz import generate_quiz_for_session_db
+from src.rag.topic_tutor import generate_topic_explanation, generate_topic_quiz
 import src.personalization.tracker as tracker
 
 app = FastAPI()
@@ -51,6 +52,10 @@ def root_index():
 @app.get("/knowledge.html")
 def knowledge():
     return FileResponse("static/knowledge.html")
+
+@app.get("/topic.html")
+def topic_page():
+    return FileResponse("static/topic.html")
 
 
 # ── Sessions ────────────────────────────────────────────
@@ -178,6 +183,28 @@ def submit_answer(req: QuizAnswerRequest):
 @app.get("/api/profile")
 def get_profile():
     return tracker.get_performance_areas()
+
+
+# ── Topic Tutor ─────────────────────────────────────────
+class TopicExplainRequest(BaseModel):
+    topic: str
+    subject: str
+    mastery_level: str  # "strong", "average", "weak"
+    score_pct: int      # 0-100
+
+@app.post("/api/topic/explain")
+def explain_topic(req: TopicExplainRequest):
+    explanation = generate_topic_explanation(
+        req.topic, req.subject, req.mastery_level, req.score_pct
+    )
+    return {"explanation": explanation}
+
+@app.post("/api/topic/quiz")
+def topic_quiz(req: TopicExplainRequest):
+    quiz = generate_topic_quiz(
+        req.topic, req.subject, req.mastery_level, req.score_pct
+    )
+    return quiz
 
 
 if __name__ == "__main__":

@@ -22,8 +22,8 @@
     "topic_scores": {
       "Machine Learning": {
         "Perceptron Algorithm": {
-          "correct": 0,
-          "total": 1
+          "correct": 1,
+          "total": 5
         },
         "Perceptron": {
           "correct": 0,
@@ -38,8 +38,8 @@
       },
       "Deep Learning": {
         "Activation Functions": {
-          "correct": 0,
-          "total": 1
+          "correct": 4,
+          "total": 5
         }
       }
     },
