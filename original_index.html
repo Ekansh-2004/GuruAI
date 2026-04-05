@@ -270,14 +270,24 @@
             <nav class="flex-1 space-y-1 px-2 overflow-y-auto">
                 <div
                     class="bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer">
-                    <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">chat</span>
+                    <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">add_circle</span>
                     Study Session
                 </div>
-                <a href="/knowledge.html"
-                    class="text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium">
-                    <span class="material-symbols-outlined">hub</span>
-                    Knowledge Base
-                </a>
+                <div
+                    class="text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer">
+                    <span class="material-symbols-outlined">history</span>
+                    History
+                </div>
+                <div
+                    class="text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer">
+                    <span class="material-symbols-outlined">auto_stories</span>
+                    Library
+                </div>
+                <div
+                    class="text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer">
+                    <span class="material-symbols-outlined">settings</span>
+                    Settings
+                </div>
 
                 <div class="pt-8 pb-2 px-6">
                     <p class="text-[10px] uppercase tracking-widest text-[#f6f3f5]/40 font-bold">Past Sessions</p>
@@ -398,9 +408,9 @@
 
         <aside
             class="w-80 h-screen bg-surface-container-low border-l border-outline-variant/5 flex flex-col p-6 overflow-y-auto z-40">
-            <h2 class="font-headline font-extrabold text-xl mb-6">Knowledge Hub</h2>
+            <h2 class="font-headline font-extrabold text-xl mb-8">Knowledge Hub</h2>
 
-            <section class="mb-8">
+            <section class="mb-10">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Active Documents
                     </h3>
@@ -411,13 +421,42 @@
                 </div>
             </section>
 
-            <section class="flex-1 flex flex-col min-h-0">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Knowledge Profile</h3>
-                    <a href="/knowledge.html" class="text-[10px] text-primary font-bold hover:underline">View All →</a>
+            <section class="flex-1">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">My Knowledge Profile
+                    </h3>
+                    <span
+                        class="material-symbols-outlined text-[18px] text-on-surface-variant hover:text-primary cursor-pointer">analytics</span>
                 </div>
-                <div id="knowledge-profile" class="space-y-4 flex-1 overflow-y-auto pr-1">
+                <div id="knowledge-profile" class="space-y-6">
                     <p class="text-xs text-on-surface-variant opacity-50">Complete quizzes to build your profile.</p>
+                </div>
+
+                <div class="mt-12">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-4 text-center">
+                        Recent Achievements</p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div
+                            class="aspect-square rounded-2xl bg-surface-container-highest flex items-center justify-center group relative cursor-help">
+                            <span class="material-symbols-outlined text-tertiary text-[24px]"
+                                style="font-variation-settings:'FILL' 1">workspace_premium</span>
+                            <div
+                                class="absolute -top-12 bg-black text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                Rapid Learner</div>
+                        </div>
+                        <div
+                            class="aspect-square rounded-2xl bg-surface-container-highest flex items-center justify-center group relative cursor-help">
+                            <span class="material-symbols-outlined text-secondary text-[24px]"
+                                style="font-variation-settings:'FILL' 1">history_edu</span>
+                            <div
+                                class="absolute -top-12 bg-black text-[9px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                Deep Reader</div>
+                        </div>
+                        <div
+                            class="aspect-square rounded-2xl bg-surface-container-highest/30 border border-dashed border-outline-variant/20 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-outline text-[20px]">lock</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </aside>
@@ -473,17 +512,7 @@
                 renderSessions(sessions);
                 loadMessages(id);
                 checkDbStatus(id);
-                loadDocuments(id);
-                // Restore saved quiz for this session
-                const savedQuiz = await fetch(`${API}/api/sessions/${id}/quiz`).then(r => r.json());
-                if (savedQuiz && savedQuiz.questions && savedQuiz.questions.length > 0) {
-                    currentQuiz = savedQuiz;
-                    renderQuiz(savedQuiz, true); // true = read-only (already answered)
-                } else {
-                    document.getElementById("quiz-container").innerHTML = "";
-                    document.getElementById("quiz-status").textContent = "";
-                    currentQuiz = null;
-                }
+                loadDocuments(id); // Load docs when switching sessions
             }
 
             window.deleteSession = async function () {
@@ -651,32 +680,21 @@
                 }
             };
 
-            function renderQuiz(quiz, readOnly = false) {
+            function renderQuiz(quiz) {
                 const container = document.getElementById("quiz-container");
                 if (!container) return;
                 container.innerHTML = `<h3 class="font-headline font-bold text-lg mb-4 text-primary">🎯 Assessment Quiz</h3>`;
                 quiz.questions.forEach((q, i) => {
                     const block = document.createElement("div");
                     block.className = "quiz-question";
-                    block.innerHTML = `<p><strong>Q${i + 1}: ${q.question}</strong> <em class="text-on-surface-variant text-xs ml-2 block mt-1">${q.subject} • ${q.topic}</em></p>`;
+                    block.innerHTML = `<p><strong>Q${i + 1}: ${q.question}</strong> <em class="text-on-surface-variant">(${q.topic})</em></p>`;
                     q.options.forEach((opt, idx) => {
                         const btn = document.createElement("button");
                         btn.className = "quiz-option";
                         btn.textContent = opt;
-                        if (readOnly) {
-                            btn.disabled = true;
-                            if (idx === q.correct_index) btn.classList.add("correct");
-                        } else {
-                            btn.onclick = () => submitAnswer(q, idx, btn, block);
-                        }
+                        btn.onclick = () => submitAnswer(q, idx, btn, block);
                         block.appendChild(btn);
                     });
-                    if (readOnly && q.explanation) {
-                        const exp = document.createElement("p");
-                        exp.className = "quiz-explanation";
-                        exp.textContent = q.explanation;
-                        block.appendChild(exp);
-                    }
                     container.appendChild(block);
                 });
                 container.scrollIntoView({ behavior: "smooth" });
@@ -694,7 +712,7 @@
                 await fetch(`${API}/api/quiz/answer`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ session_id: activeSessionId, subject: q.subject, topic: q.topic, is_correct: isCorrect }),
+                    body: JSON.stringify({ session_id: activeSessionId, topic: q.topic, is_correct: isCorrect }),
                 });
                 loadProfile();
             }
@@ -712,16 +730,14 @@
                 };
 
                 let hasData = false;
-                // API now returns {subject: {strong:[], average:[], weak:[]}}
-                Object.values(data).forEach((subjectData) => {
-                    ["strong", "average", "weak"].forEach((level) => {
-                        (subjectData[level] || []).forEach(([topic, score, c, t]) => {
-                            hasData = true;
-                            const pct = Math.round(score * 100);
-                            const { label, color, gradFrom, gradTo } = levelMeta[level];
-                            const div = document.createElement("div");
-                            div.className = "space-y-3";
-                            div.innerHTML = `
+                ["strong", "average", "weak"].forEach((level) => {
+                    (data[level] || []).forEach(([topic, score, c, t]) => {
+                        hasData = true;
+                        const pct = Math.round(score * 100);
+                        const { label, color, gradFrom, gradTo } = levelMeta[level];
+                        const div = document.createElement("div");
+                        div.className = "space-y-3";
+                        div.innerHTML = `
                 <div class="flex justify-between items-end">
                   <div>
                     <p class="text-xs font-bold text-on-surface">${topic}</p>
@@ -732,8 +748,7 @@
                 <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
                   <div class="h-full bg-gradient-to-r ${gradFrom} ${gradTo} rounded-full" style="width:${pct}%"></div>
                 </div>`;
-                            container.appendChild(div);
-                        });
+                        container.appendChild(div);
                     });
                 });
 

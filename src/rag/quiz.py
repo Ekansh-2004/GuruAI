@@ -9,7 +9,8 @@ from typing import List
 from src.rag.embedder import load_existing_vectorstore
 
 class QuizQuestion(BaseModel):
-    topic: str = Field(description="A broad, high-level, generalized category name (like 'Software Metrics' or 'Data Structures'). Avoid highly specific sub-topics. Limit to 1-3 words.")
+    subject: str = Field(description="A broad major subject typical for a college student (e.g. Cyber Security, Data Structures, Artificial Intelligence, Database Management Systems, Machine Learning, Deep Learning, Operating Systems, Computer Networks).")
+    topic: str = Field(description="The specific sub-topic or concept (like 'Vulnerability Analysis' or 'System Security'). Limit to 1-3 words.")
     question: str = Field(description="The question text")
     options: List[str] = Field(description="Exactly 4 options for the question")
     correct_index: int = Field(description="Index of the correct option (0 to 3)")
@@ -42,8 +43,9 @@ def generate_quiz_for_session_db(session_id: str) -> dict:
     prompt = PromptTemplate(
         template="""You are Study AI. Based ONLY on the following textbook excerpts uploaded by the student, generate a high-quality multiple choice quiz with exactly 4 questions to test the student's understanding of the facts precisely detailed within.
 
-CRITICAL INSTRUCTION FOR TOPICS:
-When generating the 'topic' field for each question, you MUST use very broad, high-level academic categories (e.g., "Software Engineering", "Machine Learning", "Data Structures", "Networking"). DO NOT use highly specific sub-topics or detailed concept names. For example, instead of "Halstead Formulas" or "Halstead Variables", just use "Software Metrics". Keep it generalized.
+CRITICAL INSTRUCTION FOR CATEGORIZATION:
+When generating the 'subject' and 'topic' fields for each question, you MUST use a widely known, broad computer science major subject typical for a college curriculum (e.g., "Cyber Security", "Data Structures", "Artificial Intelligence", "Database Management Systems", "Machine Learning", "Operating Systems", "Generative AI") for the 'subject' field. 
+Then, specify the more precise, detailed sub-topic or concept in the 'topic' field (e.g., "Vulnerability Analysis", "Binary Trees", "Neural Networks").
 
 Textbook Excerpts:
 {text_corpus}

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Knowledge Profile - The Illuminated Scholar</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#2c2c2f",
+                    "error": "#ff6e84",
+                    "error-dim": "#d73357",
+                    "surface-tint": "#d095ff",
+                    "primary": "#d095ff",
+                    "on-tertiary-fixed-variant": "#006832",
+                    "inverse-primary": "#8534c4",
+                    "primary-fixed": "#c782ff",
+                    "surface-container": "#19191c",
+                    "secondary-fixed": "#26e6ff",
+                    "outline-variant": "#48474a",
+                    "surface": "#0e0e10",
+                    "on-tertiary-fixed": "#004820",
+                    "on-error-container": "#ffb2b9",
+                    "surface-dim": "#0e0e10",
+                    "tertiary": "#b5ffc2",
+                    "on-tertiary": "#006731",
+                    "on-secondary-fixed-variant": "#005964",
+                    "secondary-container": "#006875",
+                    "on-secondary-container": "#e8fbff",
+                    "on-primary": "#490078",
+                    "surface-container-lowest": "#000000",
+                    "primary-container": "#c782ff",
+                    "on-primary-fixed-variant": "#450073",
+                    "tertiary-fixed": "#3fff8b",
+                    "on-primary-container": "#38005e",
+                    "inverse-on-surface": "#555557",
+                    "outline": "#767577",
+                    "surface-container-high": "#1f1f22",
+                    "on-tertiary-container": "#005d2c",
+                    "surface-container-highest": "#262528",
+                    "on-surface": "#f6f3f5",
+                    "secondary-fixed-dim": "#00d7f0",
+                    "primary-dim": "#c57eff",
+                    "primary-fixed-dim": "#bd6efe",
+                    "tertiary-fixed-dim": "#24f07e",
+                    "on-surface-variant": "#acaaad",
+                    "on-error": "#490013",
+                    "background": "#0e0e10",
+                    "secondary-dim": "#00d4ec",
+                    "surface-variant": "#262528",
+                    "on-secondary-fixed": "#003a42",
+                    "secondary": "#00e3fd",
+                    "on-primary-fixed": "#000000",
+                    "on-secondary": "#004d57",
+                    "inverse-surface": "#fcf8fb",
+                    "surface-container-low": "#131315",
+                    "error-container": "#a70138",
+                    "tertiary-container": "#3fff8b",
+                    "tertiary-dim": "#24f07e",
+                    "on-background": "#f6f3f5"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Inter"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-headline { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-glow-primary {
+            background: linear-gradient(135deg, #d095ff 0%, #c782ff 100%);
+        }
+        .bg-glow-tertiary {
+            background: linear-gradient(135deg, #b5ffc2 0%, #3fff8b 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#131315] font-headline tracking-tight border-b border-surface-container-high">
+<div class="flex items-center gap-4">
+<span class="text-xl font-bold tracking-tighter text-[#f6f3f5]">The Illuminated Scholar</span>
+</div>
+<nav class="hidden md:flex items-center gap-8 text-sm font-medium">
+<a class="text-[#f6f3f5]/60 hover:text-[#d095ff] transition-colors" href="#">Library</a>
+<a class="text-[#f6f3f5]/60 hover:text-[#d095ff] transition-colors" href="#">Sessions</a>
+<a class="text-[#f6f3f5]/60 hover:text-[#d095ff] transition-colors" href="index.html">Insights</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="p-2 text-[#f6f3f5]/60 hover:text-[#d095ff] transition-all active:opacity-80">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-[#f6f3f5]/60 hover:text-[#d095ff] transition-all active:opacity-80">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high ml-2">
+<img alt="User profile avatar" class="w-full h-full object-cover" data-alt="portrait of a modern academic scholar with minimalist glasses on a dark aesthetic background soft purple rim light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz6PU-AwmttPbTGXOS5YuMWqQfba6UXHpeoQx2wNe7yCXNlLtE0xLhwSZpYugmMDtKyePJanyM0vhHfudAPDCxCeBQaC2M8V47f-5Ox0i_l1hy2kSf3uX1LthXI6p0JMuSyEZeLRa1UFMY0iAH5pEqO0IhPA_KgTM_yn03YfxvSp79MuaIpW-QZYpYiUU66JfupoWzSVAV8kM7-pXCTRw_63BPNonN2Uw1rMOtjOGG6eCBPNHgm7SJ1TN7dCTpQsHaj0zTPW4sHNgi"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 bottom-0 flex flex-col p-4 gap-2 bg-[#131315] w-64 z-40 border-r border-surface-container-high">
+<div class="flex items-center gap-3 px-4 py-6 mb-4">
+<div class="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="hub">hub</span>
+</div>
+<div>
+<h2 class="text-lg font-black text-[#d095ff] leading-none">Neon Scholar</h2>
+<p class="text-xs text-[#f6f3f5]/50 mt-1 uppercase tracking-wider">Lvl 42 Polymath</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#f6f3f5]/70 hover:bg-[#1f1f22]/50 rounded-xl transition-transform duration-200 hover:translate-x-1 font-headline text-sm font-medium" href="index.html">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 bg-[#1f1f22] text-[#d095ff] rounded-xl font-headline text-sm font-medium" href="knowledge.html">
+<span class="material-symbols-outlined" data-icon="hub">hub</span> Knowledge Profile
+            </a>
+</nav>
+<div class="mt-auto flex flex-col gap-1 border-t border-[#f6f3f5]/5 pt-4">
+<a class="flex items-center gap-3 px-4 py-3 w-full bg-glow-primary text-on-primary-fixed rounded-xl font-bold mb-2 active:scale-95 duration-150" href="index.html">
+    <span class="material-symbols-outlined text-[18px]">add_circle</span> New Study Session
+</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="pl-64 pt-16 min-h-screen">
+<div class="max-w-[1400px] mx-auto p-12 space-y-12">
+<header class="flex justify-between items-end">
+    <div>
+        <div class="flex items-center gap-3 mb-2">
+            <h1 class="text-4xl font-headline font-extrabold tracking-tight text-on-surface">Knowledge Base</h1>
+            <span class="bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Lvl 42</span>
+        </div>
+        <p class="text-on-surface-variant max-w-xl leading-relaxed">Comprehensive breakdown of your cognitive retention across all tracked disciplines. Expand your strong topics and review your weak areas to progress.</p>
+    </div>
+    <a href="index.html" class="flex items-center gap-2 text-on-surface/60 hover:text-primary transition-colors font-bold bg-surface-container-high px-5 py-2.5 rounded-lg">
+        <span class="material-symbols-outlined text-xl">arrow_back</span> Dashboard
+    </a>
+</header>
+
+
+<!-- Folders View -->
+<div id="folders-view" class="block">
+    <h2 class="text-2xl font-headline font-bold mb-8">Major Subjects</h2>
+    <div id="folders-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Dynamically populated subjects -->
+    </div>
+</div>
+
+<!-- Details View -->
+<div id="details-view" class="hidden">
+    <div class="flex items-center gap-4 mb-8">
+        <button onclick="showFolders()" class="w-10 h-10 rounded-full bg-surface-container-high hover:bg-surface-bright flex items-center justify-center transition-colors shadow-md">
+            <span class="material-symbols-outlined text-on-surface">arrow_back</span>
+        </button>
+        <h2 id="details-title" class="text-2xl font-headline font-bold">Subject Details</h2>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Strong Column -->
+        <div class="bg-surface-container/30 border border-tertiary/20 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-tertiary/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-tertiary">verified</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-headline font-bold text-on-surface">Strong</h2>
+                        <p class="text-xs text-tertiary font-medium">90%+ Mastery</p>
+                    </div>
+                </div>
+                <span id="strong-count" class="text-2xl font-black text-tertiary">0</span>
+            </div>
+            <div id="strong-column-content" class="space-y-3"></div>
+        </div>
+
+        <!-- Average Column -->
+        <div class="bg-surface-container/30 border border-secondary/20 rounded-2xl p-6">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-secondary/20">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-secondary">trending_up</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-headline font-bold text-on-surface">Average</h2>
+                        <p class="text-xs text-secondary font-medium">60% - 89% Mastery</p>
+                    </div>
+                </div>
+                <span id="average-count" class="text-2xl font-black text-secondary">0</span>
+            </div>
+            <div id="average-column-content" class="space-y-3"></div>
+        </div>
+
+        <!-- Weak Column -->
+        <div class="bg-surface-container/30 border border-error/20 rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute inset-0 bg-error/5 pointer-events-none"></div>
+            <div class="relative z-10">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-error/20">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-error">warning</span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-headline font-bold text-on-surface">Weak</h2>
+                            <p class="text-xs text-error font-medium">Below 60% Mastery</p>
+                        </div>
+                    </div>
+                    <span id="weak-count" class="text-2xl font-black text-error">0</span>
+                </div>
+                <div id="weak-column-content" class="space-y-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+</main>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const API = "";
+
+        window.showFolders = function () {
+            document.getElementById("folders-view").classList.remove("hidden");
+            document.getElementById("details-view").classList.add("hidden");
+        };
+
+        window.showSubjectDetails = function (subjectName, subjectData) {
+            document.getElementById("folders-view").classList.add("hidden");
+            document.getElementById("details-view").classList.remove("hidden");
+            document.getElementById("details-title").textContent = subjectName;
+
+            function processLevel(level, containerId, countId, twColor, showReviewBtn) {
+                const container = document.getElementById(containerId);
+                const countEl = document.getElementById(countId);
+                if (!container) return;
+
+                container.innerHTML = "";
+                const items = subjectData[level] || [];
+                countEl.textContent = items.length;
+
+                if (items.length === 0) {
+                    container.innerHTML = `<p class="text-xs text-on-surface-variant opacity-50 py-2">No topics yet.</p>`;
+                    return;
+                }
+
+                items.forEach(([topic, score]) => {
+                    const pct = Math.round(score * 100);
+                    const div = document.createElement("div");
+
+                    if (showReviewBtn) {
+                        div.className = `bg-surface-container p-4 rounded-xl transition-colors group relative border border-${twColor}/10 hover:border-${twColor}/40`;
+                        div.innerHTML = `
+                            <div class="flex justify-between mb-2 pr-12">
+                                <h4 class="font-bold text-sm text-on-surface">${topic}</h4>
+                                <span class="text-${twColor} font-bold text-sm">${pct}%</span>
+                            </div>
+                            <div class="h-1.5 w-[calc(100%-3rem)] bg-surface-container-highest rounded-full overflow-hidden">
+                                <div class="h-full bg-${twColor} rounded-full" style="width:${pct}%"></div>
+                            </div>
+                            <button class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-${twColor}/10 hover:bg-${twColor} text-${twColor} flex items-center justify-center transition-colors" title="Review">
+                                <span class="material-symbols-outlined text-[16px]">menu_book</span>
+                            </button>`;
+                    } else {
+                        div.className = `bg-surface-container p-4 rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer border border-transparent hover:border-${twColor}/30`;
+                        div.innerHTML = `
+                            <div class="flex justify-between mb-2">
+                                <h4 class="font-bold text-sm text-on-surface">${topic}</h4>
+                                <span class="text-${twColor} font-bold text-sm">${pct}%</span>
+                            </div>
+                            <div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                                <div class="h-full bg-${twColor} rounded-full" style="width:${pct}%"></div>
+                            </div>`;
+                    }
+                    container.appendChild(div);
+                });
+            }
+
+            processLevel("strong", "strong-column-content", "strong-count", "tertiary", false);
+            processLevel("average", "average-column-content", "average-count", "secondary", false);
+            processLevel("weak", "weak-column-content", "weak-count", "error", true);
+        };
+
+        async function loadProfile() {
+            try {
+                const data = await fetch(`${API}/api/profile`).then((r) => r.json());
+                const grid = document.getElementById("folders-grid");
+                grid.innerHTML = "";
+
+                const subjects = Object.keys(data);
+
+                if (subjects.length === 0) {
+                    grid.innerHTML = `<p class="col-span-full text-center text-on-surface-variant opacity-50 my-10">No subjects tracked yet. Take some quizzes!</p>`;
+                    return;
+                }
+
+                let totalS = 0, globalC = 0;
+
+                subjects.forEach(subjectName => {
+                    const sData = data[subjectName];
+                    const wC = (sData.weak || []).length;
+                    const aC = (sData.average || []).length;
+                    const sC = (sData.strong || []).length;
+                    const totalTopics = wC + aC + sC;
+
+                    let subjScoreSum = 0;
+                    ["weak", "average", "strong"].forEach(lvl => {
+                        (sData[lvl] || []).forEach(([_, s]) => { subjScoreSum += s; });
+                    });
+
+                    totalS += subjScoreSum;
+                    globalC += totalTopics;
+
+                    const card = document.createElement("div");
+                    card.className = "bg-surface-container-low border border-surface-container-high hover:border-primary/40 hover:bg-surface-container p-6 rounded-2xl cursor-pointer transition-all shadow-lg group";
+                    card.onclick = () => window.showSubjectDetails(subjectName, sData);
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                <span class="material-symbols-outlined text-[28px]">folder_open</span>
+                            </div>
+                            <span class="text-xs font-bold bg-surface-container-highest px-2 py-1 rounded text-on-surface-variant">${totalTopics} Topics</span>
+                        </div>
+                        <h3 class="text-lg font-bold font-headline text-on-surface mb-2">${subjectName}</h3>
+                        <div class="flex items-center gap-4 text-xs font-bold mt-4 pt-4 border-t border-surface-container-high">
+                            <span class="text-error flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">warning</span> ${wC}</span>
+                            <span class="text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">trending_up</span> ${aC}</span>
+                            <span class="text-tertiary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">verified</span> ${sC}</span>
+                        </div>`;
+                    grid.appendChild(card);
+                });
+
+            } catch (err) {
+                console.error("Failed to load profile:", err);
+            }
+        }
+
+        loadProfile();
+    });
+</script>
+</body></html>

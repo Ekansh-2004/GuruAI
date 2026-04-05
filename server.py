@@ -44,6 +44,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def root():
     return FileResponse("static/index.html")
 
+@app.get("/index.html")
+def root_index():
+    return FileResponse("static/index.html")
+
+@app.get("/knowledge.html")
+def knowledge():
+    return FileResponse("static/knowledge.html")
+
 
 # ── Sessions ────────────────────────────────────────────
 @app.get("/api/sessions")
@@ -147,16 +155,22 @@ def generate_quiz(session_id: str):
     quiz = generate_quiz_for_session_db(session_id)
     if not quiz or not quiz.get("questions"):
         raise HTTPException(status_code=500, detail="Quiz generation failed.")
+    tracker.save_quiz(session_id, quiz)  # Persist quiz for session
     return quiz
+
+@app.get("/api/sessions/{session_id}/quiz")
+def get_quiz(session_id: str):
+    return tracker.get_quiz(session_id)
 
 class QuizAnswerRequest(BaseModel):
     session_id: str
+    subject: str
     topic: str
     is_correct: bool
 
 @app.post("/api/quiz/answer")
 def submit_answer(req: QuizAnswerRequest):
-    tracker.update_topic_performance(req.session_id, req.topic, req.is_correct)
+    tracker.update_topic_performance(req.session_id, req.subject, req.topic, req.is_correct)
     return {"status": "recorded"}
 
 

@@ -92,9 +92,21 @@ def get_session_documents(session_id: str) -> list:
     data = load_all_sessions()
     return data.get(session_id, {}).get("documents", [])
 
+def save_quiz(session_id: str, quiz: dict):
+    """Persist the generated quiz inside the session so it survives navigation."""
+    data = load_all_sessions()
+    if session_id in data:
+        data[session_id]["quiz"] = quiz
+        save_all_sessions(data)
+
+def get_quiz(session_id: str) -> dict:
+    """Retrieve the saved quiz for a session, or empty if none."""
+    data = load_all_sessions()
+    return data.get(session_id, {}).get("quiz", {})
+
 # --- Global Student Profile / Knowledge Base ---
 
-def update_topic_performance(session_id: str, topic: str, correct: bool):
+def update_topic_performance(session_id: str, subject: str, topic: str, correct: bool):
     """Record quiz performance in the session database so it can be dynamically subtracted when deleted."""
     data = load_all_sessions()
     if session_id not in data:
@@ -104,44 +116,54 @@ def update_topic_performance(session_id: str, topic: str, correct: bool):
     if "topic_scores" not in session_data:
         session_data["topic_scores"] = {}
         
-    t = topic.title().strip()
-    if t not in session_data["topic_scores"]:
-        session_data["topic_scores"][t] = {"correct": 0, "total": 0}
+    subj = subject.title().strip()
+    if subj not in session_data["topic_scores"]:
+        session_data["topic_scores"][subj] = {}
         
-    session_data["topic_scores"][t]["total"] += 1
+    t = topic.title().strip()
+    if t not in session_data["topic_scores"][subj]:
+        session_data["topic_scores"][subj][t] = {"correct": 0, "total": 0}
+        
+    session_data["topic_scores"][subj][t]["total"] += 1
     if correct:
-        session_data["topic_scores"][t]["correct"] += 1
+        session_data["topic_scores"][subj][t]["correct"] += 1
         
     save_all_sessions(data)
 
 def get_performance_areas():
-    """Aggregates all topic scores from all active sessions, classifying them dynamically into weak, average, and strong."""
+    """Aggregates all topic scores from all active sessions, classifying them dynamically into weak, average, and strong by subject."""
     data = load_all_sessions()
-    global_topics = {}
+    global_subjects = {}
     
     # Aggregate from all valid sessions
     for sid, session in data.items():
         session_scores = session.get("topic_scores", {})
-        for t, stats in session_scores.items():
-            if t not in global_topics:
-                global_topics[t] = {"correct": 0, "total": 0}
-            global_topics[t]["correct"] += stats["correct"]
-            global_topics[t]["total"] += stats["total"]
+        for subj, topics in session_scores.items():
+            if subj not in global_subjects:
+                global_subjects[subj] = {}
+            for t, stats in topics.items():
+                if t not in global_subjects[subj]:
+                    global_subjects[subj][t] = {"correct": 0, "total": 0}
+                global_subjects[subj][t]["correct"] += stats["correct"]
+                global_subjects[subj][t]["total"] += stats["total"]
     
-    weak, average, strong = [], [], []
-    for t, stats in global_topics.items():
-        if stats["total"] == 0: continue
-        score = stats["correct"] / stats["total"]
-        if score < 0.5:
-            weak.append((t, score, stats["correct"], stats["total"]))
-        elif score <= 0.75:
-            average.append((t, score, stats["correct"], stats["total"]))
-        else:
-            strong.append((t, score, stats["correct"], stats["total"]))
+    result = {}
+    for subj, topics in global_subjects.items():
+        weak, average, strong = [], [], []
+        for t, stats in topics.items():
+            if stats["total"] == 0: continue
+            score = stats["correct"] / stats["total"]
+            if score < 0.5:
+                weak.append((t, score, stats["correct"], stats["total"]))
+            elif score <= 0.75:
+                average.append((t, score, stats["correct"], stats["total"]))
+            else:
+                strong.append((t, score, stats["correct"], stats["total"]))
+                
+        result[subj] = {
+            "weak": sorted(weak, key=lambda x: x[1]),
+            "average": sorted(average, key=lambda x: x[1]),
+            "strong": sorted(strong, key=lambda x: x[1], reverse=True)
+        }
             
-    # Sort logically
-    return {
-        "weak": sorted(weak, key=lambda x: x[1]),
-        "average": sorted(average, key=lambda x: x[1]),
-        "strong": sorted(strong, key=lambda x: x[1], reverse=True)
-    }
+    return result
