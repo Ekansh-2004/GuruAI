@@ -268,8 +268,9 @@
             </div>
 
             <nav class="flex-1 space-y-1 px-2 overflow-y-auto">
-                <div
-                    class="bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer">
+                <div id="nav-study"
+                    class="bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer text-sm"
+                    onclick="switchView('study')">
                     <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">chat</span>
                     Study Session
                 </div>
@@ -278,13 +279,19 @@
                     <span class="material-symbols-outlined">hub</span>
                     Knowledge Base
                 </a>
+                <div id="nav-memory"
+                    class="text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium"
+                    onclick="switchView('memory')">
+                    <span class="material-symbols-outlined">psychology</span>
+                    My Memory
+                </div>
 
-                <div class="pt-8 pb-2 px-6">
+                <div class="pt-6 pb-2 px-6">
                     <p class="text-[10px] uppercase tracking-widest text-[#f6f3f5]/40 font-bold">Past Sessions</p>
                 </div>
                 <div id="session-list" class="space-y-1"></div>
 
-                <div class="px-4 pt-4">
+                <div class="px-4 pt-4" id="delete-session-btn">
                     <button onclick="deleteSession()"
                         class="w-full text-xs text-error/60 hover:text-error px-3 py-2 rounded-lg hover:bg-error/10 transition-colors flex items-center gap-2">
                         <span class="material-symbols-outlined text-[16px]">delete</span>
@@ -314,18 +321,62 @@
         </aside>
 
         <main class="flex-1 ml-64 flex flex-col relative bg-surface overflow-hidden">
+
+            <!-- ── Memory Chat View (hidden by default) ── -->
+            <div id="memory-view" class="hidden flex-col h-full">
+                <div class="bg-[#0e0e10]/80 backdrop-blur-xl w-full h-16 flex items-center gap-4 px-8 border-b border-outline-variant/10 flex-shrink-0">
+                    <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1">psychology</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm text-on-surface">My Memory</p>
+                        <p class="text-[10px] text-on-surface-variant">Tell me about yourself — I'll remember it forever</p>
+                    </div>
+                    <div class="ml-auto">
+                        <button onclick="clearAllMemory()" class="text-xs text-error/50 hover:text-error px-3 py-1.5 rounded-lg hover:bg-error/10 transition-colors flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
+                            Clear all memory
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stored memory chips bar -->
+                <div class="px-6 py-3 border-b border-outline-variant/10 bg-surface-container-low flex-shrink-0">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Stored Preferences</p>
+                    <div id="memory-chips-view" class="flex flex-wrap gap-2 min-h-[28px]"></div>
+                </div>
+
+                <!-- Chat feed -->
+                <div id="memory-chat-feed" class="flex-1 overflow-y-auto px-8 py-8 flex flex-col gap-5 max-w-3xl mx-auto w-full"></div>
+
+                <!-- Input -->
+                <div class="p-6 flex-shrink-0">
+                    <div class="max-w-3xl mx-auto">
+                        <div class="bg-surface-container-high rounded-2xl p-4 flex gap-3 items-end shadow-2xl focus-within:ring-1 focus-within:ring-primary/30 transition-all">
+                            <textarea id="memory-chat-input"
+                                class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface placeholder:text-on-surface-variant/40 resize-none font-body text-sm"
+                                rows="2"
+                                placeholder="Tell me about yourself — preferences, background, how you like to learn..."
+                                onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendMemoryMessage();}"></textarea>
+                            <button onclick="sendMemoryMessage()" id="memory-chat-send"
+                                class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary-fixed shadow-lg shadow-primary/20 active:scale-90 transition-transform flex-shrink-0">
+                                <span class="material-symbols-outlined">send</span>
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-on-surface-variant/40 text-center mt-2">Your preferences apply to all study sessions automatically</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Study Session View ── -->
+            <div id="study-view" class="flex flex-col h-full">
             <header
                 class="bg-[#0e0e10]/80 backdrop-blur-xl w-full h-16 sticky top-0 z-50 flex justify-between items-center px-8 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
                 <div class="flex items-center gap-8">
                     <span
                         class="text-lg font-black bg-gradient-to-br from-[#d095ff] to-[#c782ff] bg-clip-text text-transparent">The
                         Illuminated Scholar</span>
-                    <nav class="hidden md:flex gap-6 items-center">
-                        <a class="text-[#d095ff] border-b-2 border-[#d095ff] pb-1 text-sm font-medium" href="#">Focus
-                            Mode</a>
-                        <a class="text-[#f6f3f5]/70 hover:text-[#d095ff] transition-colors text-sm font-medium"
-                            href="#">Resources</a>
-                    </nav>
+                   
                 </div>
                 <div class="flex items-center gap-4">
                     <div class="relative flex items-center">
@@ -349,10 +400,6 @@
             <div id="scroll-area" class="flex-1 overflow-y-auto w-full">
                 <div id="chat-feed" class="px-8 py-12 flex flex-col gap-6 max-w-4xl mx-auto w-full">
                 </div>
-
-                <div id="quiz-container" class="px-8 max-w-4xl mx-auto w-full pb-4"></div>
-                <p id="quiz-status"
-                    class="text-center text-xs text-on-surface-variant px-8 pb-8 max-w-4xl mx-auto w-full"></p>
             </div>
             <div class="p-8 pt-0">
                 <div class="max-w-4xl mx-auto relative">
@@ -376,10 +423,17 @@
                                     Generate Quiz
                                 </button>
                             </div>
-                            <button onclick="sendMessage()"
-                                class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary-fixed shadow-lg shadow-primary/20 active:scale-90 transition-transform">
-                                <span class="material-symbols-outlined">send</span>
-                            </button>
+                            <div class="flex items-center gap-2">
+                                <button id="stop-btn" onclick="stopResponse()"
+                                    class="hidden w-10 h-10 rounded-full bg-error/20 text-error flex items-center justify-center hover:bg-error/30 active:scale-90 transition-all"
+                                    title="Stop response">
+                                    <span class="material-symbols-outlined text-[20px]">stop_circle</span>
+                                </button>
+                                <button id="send-btn" onclick="sendMessage()"
+                                    class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-on-primary-fixed shadow-lg shadow-primary/20 active:scale-90 transition-transform">
+                                    <span class="material-symbols-outlined">send</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -393,7 +447,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </div><!-- /study-view -->
         </main>
 
         <aside
@@ -420,6 +474,16 @@
                     <p class="text-xs text-on-surface-variant opacity-50">Complete quizzes to build your profile.</p>
                 </div>
             </section>
+
+            <section class="mt-6 pt-6 border-t border-outline-variant/10">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">My Memory</h3>
+                    <button onclick="switchView('memory')" class="text-[10px] text-primary font-bold hover:underline">Edit →</button>
+                </div>
+                <div id="sidebar-memory-list" class="space-y-1.5">
+                    <p class="text-xs text-on-surface-variant opacity-40 italic">No preferences saved yet.</p>
+                </div>
+            </section>
         </aside>
     </div>
 
@@ -442,6 +506,7 @@
                 renderSessions(sessions);
                 loadMessages(activeSessionId);
                 loadProfile();
+                loadSidebarMemory();
                 checkDbStatus(activeSessionId);
                 loadDocuments(activeSessionId); // Load docs on init
             }
@@ -460,6 +525,7 @@
             }
 
             window.newSession = async function () {
+                window.switchView('study');
                 const res = await fetch(`${API}/api/sessions`, { method: "POST" }).then((r) => r.json());
                 activeSessionId = res.session_id;
                 localStorage.setItem("lastSessionId", activeSessionId);
@@ -471,6 +537,7 @@
             };
 
             async function switchSession(id) {
+                window.switchView('study');
                 activeSessionId = id;
                 localStorage.setItem("lastSessionId", id);
                 const sessions = await fetch(`${API}/api/sessions`).then((r) => r.json());
@@ -478,16 +545,6 @@
                 loadMessages(id);
                 checkDbStatus(id);
                 loadDocuments(id);
-                // Restore saved quiz for this session
-                const savedQuiz = await fetch(`${API}/api/sessions/${id}/quiz`).then(r => r.json());
-                if (savedQuiz && savedQuiz.questions && savedQuiz.questions.length > 0) {
-                    currentQuiz = savedQuiz;
-                    renderQuiz(savedQuiz, true); // true = read-only (already answered)
-                } else {
-                    document.getElementById("quiz-container").innerHTML = "";
-                    document.getElementById("quiz-status").textContent = "";
-                    currentQuiz = null;
-                }
             }
 
             window.deleteSession = async function () {
@@ -502,7 +559,13 @@
                 const feed = document.getElementById("chat-feed");
                 if (!feed) return;
                 feed.innerHTML = "";
-                msgs.forEach((m) => appendBubble(m.role, m.content));
+                msgs.forEach((m) => {
+                    if (m.role === "quiz") {
+                        feed.appendChild(buildQuizCard(m.content, true));
+                    } else {
+                        appendBubble(m.role, m.content);
+                    }
+                });
             }
 
             function appendBubble(role, content) {
@@ -527,6 +590,12 @@
                 feed.scrollTop = feed.scrollHeight;
             }
 
+            let stopController = null;
+
+            function stopResponse() {
+                if (stopController) stopController.abort();
+            }
+
             window.sendMessage = async function () {
                 const input = document.getElementById("chat-input");
                 const question = input.value.trim();
@@ -534,29 +603,113 @@
                 input.value = "";
                 appendBubble("user", question);
 
+                // Show stop, hide send
+                document.getElementById("stop-btn").classList.remove("hidden");
+                document.getElementById("send-btn").classList.add("hidden");
+
                 const feed = document.getElementById("chat-feed");
-                const thinkingWrapper = document.createElement("div");
-                thinkingWrapper.className = "flex flex-col gap-1 items-start";
-                thinkingWrapper.innerHTML = `<div class="ai-bubble flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div><span class="text-sm text-on-surface-variant">Thinking...</span></div>`;
-                feed.appendChild(thinkingWrapper);
+                // Build AI bubble with streaming placeholder
+                const wrapper = document.createElement("div");
+                wrapper.className = "flex flex-col gap-1 items-start";
+                const label = document.createElement("div");
+                label.className = "flex items-center gap-2 px-1";
+                label.innerHTML = `<div class="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center"><span class="material-symbols-outlined text-[12px] text-primary" style="font-variation-settings:'FILL' 1">auto_awesome</span></div><span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Tutor AI</span>`;
+                const bubble = document.createElement("div");
+                bubble.className = "ai-bubble";
+                bubble.innerHTML = `<span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span><span class="text-sm text-on-surface-variant">Thinking...</span></span>`;
+                wrapper.appendChild(label);
+                wrapper.appendChild(bubble);
+                feed.appendChild(wrapper);
                 feed.scrollTop = feed.scrollHeight;
+
+                stopController = new AbortController();
+                let fullText = "";
 
                 try {
                     const res = await fetch(`${API}/api/chat`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ session_id: activeSessionId, question }),
-                    }).then((r) => r.json());
+                        signal: stopController.signal,
+                    });
 
-                    thinkingWrapper.remove();
-                    appendBubble("assistant", res.answer);
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder();
+                    let buffer = "";
 
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split("\n");
+                        buffer = lines.pop();
+                        for (const line of lines) {
+                            if (!line.startsWith("data: ")) continue;
+                            const data = line.slice(6).trim();
+                            if (data === "[DONE]") break;
+                            try {
+                                const parsed = JSON.parse(data);
+                                if (parsed.chunk) {
+                                    fullText += parsed.chunk;
+                                    // Stream raw text to bubble (follow-ups will be stripped after done)
+                                    bubble.innerHTML = marked.parse(fullText);
+                                    feed.scrollTop = feed.scrollHeight;
+                                }
+                            } catch {}
+                        }
+                    }
+
+                    // Once streaming is done, parse and separate follow-up questions
+                    const { mainText, followUps } = parseFollowUps(fullText);
+                    bubble.innerHTML = marked.parse(mainText);
+
+                    if (followUps.length > 0) {
+                        const chips = document.createElement("div");
+                        chips.className = "flex flex-wrap gap-2 mt-3";
+                        followUps.forEach(q => {
+                            const btn = document.createElement("button");
+                            btn.className = "text-xs px-3 py-1.5 rounded-full border border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/60 transition-all text-left";
+                            btn.textContent = q;
+                            btn.onclick = () => {
+                                document.getElementById("chat-input").value = q;
+                                document.getElementById("chat-input").focus();
+                            };
+                            chips.appendChild(btn);
+                        });
+                        wrapper.appendChild(chips);
+                    }
+
+                    feed.scrollTop = feed.scrollHeight;
                     const sessions = await fetch(`${API}/api/sessions`).then((r) => r.json());
                     renderSessions(sessions);
                 } catch (e) {
-                    thinkingWrapper.querySelector(".ai-bubble").textContent = "❌ Error getting response.";
+                    if (e.name === "AbortError") {
+                        if (!fullText) bubble.innerHTML = `<span class="text-on-surface-variant text-sm">⏹ Response stopped.</span>`;
+                        else bubble.innerHTML = marked.parse(parseFollowUps(fullText).mainText);
+                    } else {
+                        bubble.innerHTML = `<span class="text-error text-sm">❌ Error getting response.</span>`;
+                    }
+                } finally {
+                    document.getElementById("stop-btn").classList.add("hidden");
+                    document.getElementById("send-btn").classList.remove("hidden");
+                    stopController = null;
                 }
             };
+
+            function parseFollowUps(text) {
+                const marker = "FOLLOW_UPS:";
+                const idx = text.indexOf(marker);
+                if (idx === -1) return { mainText: text.trim(), followUps: [] };
+
+                const mainText = text.slice(0, idx).trim();
+                const followUpBlock = text.slice(idx + marker.length).trim();
+                const followUps = followUpBlock
+                    .split("\n")
+                    .map(l => l.replace(/^\d+\.\s*/, "").trim())
+                    .filter(l => l.length > 0)
+                    .slice(0, 3);
+                return { mainText, followUps };
+            }
 
             document.getElementById("chat-input").addEventListener("keydown", (e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -643,26 +796,37 @@
 
             let currentQuiz = null;
 
-            window.generateQuiz = async function () {
-                const statusEl = document.getElementById("quiz-status");
-                if (statusEl) statusEl.textContent = "⏳ Generating quiz...";
-                try {
-                    currentQuiz = await fetch(`${API}/api/sessions/${activeSessionId}/quiz`, { method: "POST" }).then((r) => r.json());
-                    renderQuiz(currentQuiz);
-                    if (statusEl) statusEl.textContent = "";
-                } catch {
-                    if (statusEl) statusEl.textContent = "❌ Failed. Build DB first.";
-                }
-            };
+            // Build a collapsible quiz card DOM element
+            function buildQuizCard(quiz, readOnly = false) {
+                const quizNum = document.querySelectorAll(".quiz-feed-card").length + 1;
+                const card = document.createElement("div");
+                card.className = "quiz-feed-card max-w-4xl w-full";
 
-            function renderQuiz(quiz, readOnly = false) {
-                const container = document.getElementById("quiz-container");
-                if (!container) return;
-                container.innerHTML = `<h3 class="font-headline font-bold text-lg mb-4 text-primary">🎯 Assessment Quiz</h3>`;
-                quiz.questions.forEach((q, i) => {
+                const header = document.createElement("button");
+                header.className = "w-full flex items-center justify-between px-5 py-3.5 bg-surface-container-high rounded-2xl border border-secondary/20 hover:border-secondary/40 transition-all group";
+                header.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-secondary text-[16px]" style="font-variation-settings:'FILL' 1">quiz</span>
+                        </div>
+                        <span class="font-bold text-sm text-on-surface">Assessment Quiz #${quizNum}</span>
+                        <span class="text-xs text-on-surface-variant">(${(quiz.questions || []).length} questions)</span>
+                    </div>
+                    <span class="material-symbols-outlined text-on-surface-variant group-hover:text-secondary transition-colors chevron-icon">expand_more</span>`;
+
+                const body = document.createElement("div");
+                body.className = "hidden mt-2 space-y-3 px-1";
+
+                header.onclick = () => {
+                    body.classList.toggle("hidden");
+                    const icon = header.querySelector(".chevron-icon");
+                    icon.textContent = body.classList.contains("hidden") ? "expand_more" : "expand_less";
+                };
+
+                (quiz.questions || []).forEach((q, i) => {
                     const block = document.createElement("div");
                     block.className = "quiz-question";
-                    block.innerHTML = `<p><strong>Q${i + 1}: ${q.question}</strong> <em class="text-on-surface-variant text-xs ml-2 block mt-1">${q.subject} • ${q.topic}</em></p>`;
+                    block.innerHTML = `<p><strong>Q${i + 1}: ${q.question}</strong><em class="text-on-surface-variant text-xs ml-2 block mt-1">${q.subject} • ${q.topic}</em></p>`;
                     q.options.forEach((opt, idx) => {
                         const btn = document.createElement("button");
                         btn.className = "quiz-option";
@@ -681,10 +845,36 @@
                         exp.textContent = q.explanation;
                         block.appendChild(exp);
                     }
-                    container.appendChild(block);
+                    body.appendChild(block);
                 });
-                container.scrollIntoView({ behavior: "smooth" });
+
+                card.appendChild(header);
+                card.appendChild(body);
+                return card;
             }
+
+            window.generateQuiz = async function () {
+                const feed = document.getElementById("chat-feed");
+
+                // Show a loading placeholder in the feed
+                const loadingCard = document.createElement("div");
+                loadingCard.className = "quiz-feed-card max-w-4xl w-full";
+                loadingCard.innerHTML = `<div class="flex items-center gap-3 px-5 py-3.5 bg-surface-container-high rounded-2xl border border-secondary/20">
+                    <div class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></div>
+                    <span class="text-sm text-on-surface-variant">Generating quiz...</span>
+                </div>`;
+                feed.appendChild(loadingCard);
+                feed.scrollTop = feed.scrollHeight;
+
+                try {
+                    const quiz = await fetch(`${API}/api/sessions/${activeSessionId}/quiz`, { method: "POST" }).then((r) => r.json());
+                    currentQuiz = quiz;
+                    loadingCard.replaceWith(buildQuizCard(quiz, false));
+                    feed.scrollTop = feed.scrollHeight;
+                } catch {
+                    loadingCard.innerHTML = `<p class="text-error text-sm px-4 py-3">❌ Failed to generate quiz. Build the database first.</p>`;
+                }
+            };
 
             async function submitAnswer(q, selectedIdx, btn, block) {
                 block.querySelectorAll(".quiz-option").forEach((b) => (b.disabled = true));
@@ -744,6 +934,190 @@
                 if (!hasData) {
                     container.innerHTML = `<p class="text-xs text-on-surface-variant opacity-50">Complete quizzes to build your profile.</p>`;
                 }
+            }
+
+            // ── View Switcher ─────────────────────────────────────────
+
+            window.switchView = function(view) {
+                const studyView  = document.getElementById("study-view");
+                const memoryView = document.getElementById("memory-view");
+                const navStudy   = document.getElementById("nav-study");
+                const navMemory  = document.getElementById("nav-memory");
+                const deletBtn   = document.getElementById("delete-session-btn");
+
+                if (view === "memory") {
+                    studyView.classList.add("hidden");
+                    studyView.classList.remove("flex");
+                    memoryView.classList.remove("hidden");
+                    memoryView.classList.add("flex");
+                    navStudy.className  = "text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium";
+                    navMemory.className = "bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer text-sm";
+                    if (deletBtn) deletBtn.classList.add("hidden");
+                    loadMemoryView();
+                } else {
+                    memoryView.classList.add("hidden");
+                    memoryView.classList.remove("flex");
+                    studyView.classList.remove("hidden");
+                    studyView.classList.add("flex");
+                    navMemory.className = "text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium";
+                    navStudy.className  = "bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer text-sm";
+                    if (deletBtn) deletBtn.classList.remove("hidden");
+                }
+            };
+
+            // ── Memory Chat ───────────────────────────────────────────
+
+            async function loadSidebarMemory() {
+                try {
+                    const data = await fetch(`${API}/api/memory`).then(r => r.json());
+                    renderSidebarMemory(data.items || []);
+                } catch {}
+            }
+
+            function renderSidebarMemory(items) {
+                const container = document.getElementById("sidebar-memory-list");
+                if (!container) return;
+                container.innerHTML = "";
+                if (items.length === 0) {
+                    container.innerHTML = `<p class="text-xs text-on-surface-variant opacity-40 italic">No preferences saved yet.</p>`;
+                    return;
+                }
+                items.forEach((item, idx) => {
+                    const row = document.createElement("div");
+                    row.className = "flex items-start gap-2 group";
+                    row.innerHTML = `
+                        <span class="material-symbols-outlined text-primary text-[12px] mt-0.5 flex-shrink-0" style="font-variation-settings:'FILL' 1">memory</span>
+                        <span class="flex-1 text-[11px] text-on-surface/70 leading-relaxed">${item}</span>
+                        <button onclick="deleteSidebarMemory(${idx})" class="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <span class="material-symbols-outlined text-error/50 hover:text-error text-[12px]">close</span>
+                        </button>`;
+                    container.appendChild(row);
+                });
+            }
+
+            window.deleteSidebarMemory = async function(index) {
+                const res = await fetch(`${API}/api/memory/${index}`, { method: "DELETE" }).then(r => r.json());
+                renderSidebarMemory(res.items || []);
+                renderMemoryChipsView(res.items || []);
+            };
+
+            async function loadMemoryView() {
+                try {
+                    const [histRes, memRes] = await Promise.all([
+                        fetch(`${API}/api/memory/chat`).then(r => r.json()),
+                        fetch(`${API}/api/memory`).then(r => r.json()),
+                    ]);
+
+                    const feed = document.getElementById("memory-chat-feed");
+                    feed.innerHTML = "";
+
+                    // If no history, show welcome bubble from bot
+                    if (!histRes.history || histRes.history.length === 0) {
+                        appendMemoryBubble("assistant", "Hi! 👋 I'm your personal Study Companion. Tell me about yourself — your learning preferences, background, favourite programming language, or how you like things explained. I'll remember everything and apply it in all your study sessions.");
+                    } else {
+                        histRes.history.forEach(m => appendMemoryBubble(m.role, m.content));
+                    }
+
+                    renderMemoryChipsView(memRes.items || []);
+                    renderSidebarMemory(memRes.items || []);
+                } catch (e) {
+                    console.error("Failed to load memory view", e);
+                }
+            }
+
+            function appendMemoryBubble(role, content) {
+                const feed = document.getElementById("memory-chat-feed");
+                if (!feed) return;
+                const wrapper = document.createElement("div");
+                wrapper.className = "flex flex-col gap-1 " + (role === "user" ? "items-end" : "items-start");
+                wrapper.innerHTML = role === "user"
+                    ? `<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant px-1">You</span>
+                       <div class="user-bubble max-w-[80%]">${marked.parse(content)}</div>`
+                    : `<div class="flex items-center gap-2 px-1">
+                           <div class="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                               <span class="material-symbols-outlined text-[12px] text-primary" style="font-variation-settings:'FILL' 1">psychology</span>
+                           </div>
+                           <span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Memory Bot</span>
+                       </div>
+                       <div class="ai-bubble max-w-[80%]">${marked.parse(content)}</div>`;
+                feed.appendChild(wrapper);
+                feed.scrollTop = feed.scrollHeight;
+                return wrapper;
+            }
+
+            window.sendMemoryMessage = async function () {
+                const input = document.getElementById("memory-chat-input");
+                const sendBtn = document.getElementById("memory-chat-send");
+                const text = input.value.trim();
+                if (!text) return;
+
+                input.value = "";
+                appendMemoryBubble("user", text);
+
+                // Thinking placeholder
+                const feed = document.getElementById("memory-chat-feed");
+                const thinking = document.createElement("div");
+                thinking.className = "flex flex-col gap-1 items-start";
+                thinking.innerHTML = `<div class="ai-bubble flex items-center gap-2">
+                    <div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+                    <span class="text-sm text-on-surface-variant">Remembering...</span>
+                </div>`;
+                feed.appendChild(thinking);
+                feed.scrollTop = feed.scrollHeight;
+                input.disabled = true;
+                sendBtn.disabled = true;
+
+                try {
+                    const res = await fetch(`${API}/api/memory/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ message: text }),
+                    }).then(r => r.json());
+
+                    thinking.remove();
+                    appendMemoryBubble("assistant", res.reply);
+                    renderMemoryChipsView(res.items || []);
+                    renderSidebarMemory(res.items || []);
+
+                } catch {
+                    thinking.querySelector(".ai-bubble").textContent = "❌ Error. Try again.";
+                } finally {
+                    input.disabled = false;
+                    sendBtn.disabled = false;
+                    input.focus();
+                }
+            }
+
+            function renderMemoryChipsView(items) {
+                const container = document.getElementById("memory-chips-view");
+                if (!container) return;
+                container.innerHTML = "";
+                if (items.length === 0) {
+                    container.innerHTML = `<span class="text-xs text-on-surface-variant/40 italic">Nothing stored yet</span>`;
+                    return;
+                }
+                items.forEach((item, idx) => {
+                    const chip = document.createElement("div");
+                    chip.className = "flex items-center gap-1.5 bg-primary/8 border border-primary/20 rounded-full px-3 py-1 group";
+                    chip.innerHTML = `
+                        <span class="material-symbols-outlined text-primary text-[11px]" style="font-variation-settings:'FILL' 1">memory</span>
+                        <span class="text-[11px] text-on-surface/80">${item}</span>
+                        <button onclick="deleteMemoryItemView(${idx})" class="opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                            <span class="material-symbols-outlined text-error/60 hover:text-error text-[12px]">close</span>
+                        </button>`;
+                    container.appendChild(chip);
+                });
+            }
+
+            window.deleteMemoryItemView = async function (index) {
+                const res = await fetch(`${API}/api/memory/${index}`, { method: "DELETE" }).then(r => r.json());
+                renderMemoryChipsView(res.items || []);
+            }
+
+            window.clearAllMemory = async function () {
+                if (!confirm("Clear all stored memory? This cannot be undone.")) return;
+                const res = await fetch(`${API}/api/memory`, { method: "DELETE" }).then(r => r.json());
+                renderMemoryChipsView(res.items || []);
             }
 
             init();

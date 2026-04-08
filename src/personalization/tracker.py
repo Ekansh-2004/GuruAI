@@ -53,6 +53,14 @@ def add_message(session_id: str, role: str, content: str):
         data[session_id]["updated_at"] = str(datetime.now())
         save_all_sessions(data)
 
+def add_quiz_message(session_id: str, quiz: dict):
+    """Store a quiz as an inline message in the chat feed (role='quiz'), preserving ordering."""
+    data = load_all_sessions()
+    if session_id in data:
+        data[session_id]["messages"].append({"role": "quiz", "content": quiz})
+        data[session_id]["updated_at"] = str(datetime.now())
+        save_all_sessions(data)
+
 def update_session_title(session_id: str, new_title: str):
     """Rename a session (useful for auto-naming based on the first prompt)."""
     data = load_all_sessions()
