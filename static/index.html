@@ -340,6 +340,29 @@
                     </div>
                 </div>
 
+                <!-- My Subjects section -->
+                <div class="px-6 py-4 border-b border-outline-variant/10 bg-surface-container-low flex-shrink-0">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">My Subjects</p>
+                            <p class="text-[10px] text-on-surface-variant/50 mt-0.5">Quizzes & topics will be categorized under these subjects only</p>
+                        </div>
+                    </div>
+                    <!-- Subject chips -->
+                    <div id="subjects-chips" class="flex flex-wrap gap-2 mb-3 min-h-[28px]"></div>
+                    <!-- Add subject input -->
+                    <div class="flex gap-2">
+                        <input id="subject-input" type="text"
+                            class="flex-1 bg-surface-container-highest border border-outline-variant/30 rounded-full px-4 py-1.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                            placeholder="e.g. Machine Learning, Data Structures..."
+                            onkeydown="if(event.key==='Enter'){addSubject();}" />
+                        <button onclick="addSubject()"
+                            class="px-4 py-1.5 rounded-full bg-primary/15 text-primary text-xs font-bold hover:bg-primary/25 transition-colors flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[14px]">add</span>Add
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Stored memory chips bar -->
                 <div class="px-6 py-3 border-b border-outline-variant/10 bg-surface-container-low flex-shrink-0">
                     <p class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Stored Preferences</p>
@@ -458,8 +481,14 @@
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Active Documents
                     </h3>
-                    <span id="doc-count-badge"
-                        class="text-[10px] font-bold text-primary px-2 py-0.5 rounded bg-primary/10">0/10</span>
+                    <div class="flex items-center gap-2">
+                        <span id="doc-count-badge"
+                            class="text-[10px] font-bold text-primary px-2 py-0.5 rounded bg-primary/10">0/10</span>
+                        <button id="clear-kb-btn" onclick="clearKnowledgeBase()" title="Clear Knowledge Base"
+                            class="hidden text-error/50 hover:text-error transition-colors p-0.5 rounded hover:bg-error/10">
+                            <span class="material-symbols-outlined text-[16px]">delete_sweep</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="active-documents-list" class="space-y-3">
                 </div>
@@ -508,7 +537,8 @@
                 loadProfile();
                 loadSidebarMemory();
                 checkDbStatus(activeSessionId);
-                loadDocuments(activeSessionId); // Load docs on init
+                loadDocuments(activeSessionId);
+                loadSubjects();
             }
 
             function renderSessions(sessions) {
@@ -755,6 +785,10 @@
                     list.innerHTML = "";
                     badge.textContent = `${docs.length}/10`;
 
+                    // Show/hide the clear KB button based on whether docs exist
+                    const clearBtn = document.getElementById("clear-kb-btn");
+                    if (clearBtn) clearBtn.classList.toggle("hidden", docs.length === 0);
+
                     // Render each uploaded file as a pill card
                     docs.forEach(doc => {
                         const sizeMB = (doc.size / (1024 * 1024)).toFixed(1);
@@ -793,6 +827,16 @@
                     console.error("Failed to load documents", e);
                 }
             }
+
+            window.clearKnowledgeBase = async function () {
+                if (!activeSessionId) return;
+                if (!confirm("Clear all uploaded documents and the knowledge base for this session? Chat history will be kept.")) return;
+                await fetch(`${API}/api/sessions/${activeSessionId}/knowledge`, { method: "DELETE" });
+                const statusEl = document.getElementById("db-status");
+                if (statusEl) statusEl.textContent = "⚠️ NO DATABASE — UPLOAD DOCUMENTS";
+                document.getElementById("clear-kb-btn").classList.add("hidden");
+                loadDocuments(activeSessionId);
+            };
 
             let currentQuiz = null;
 
@@ -906,8 +950,7 @@
                 };
 
                 let hasData = false;
-                // API now returns {subject: {strong:[], average:[], weak:[]}}
-                Object.values(data).forEach((subjectData) => {
+                Object.entries(data).forEach(([subject, subjectData]) => {
                     ["strong", "average", "weak"].forEach((level) => {
                         (subjectData[level] || []).forEach(([topic, score, c, t]) => {
                             hasData = true;
@@ -916,12 +959,21 @@
                             const div = document.createElement("div");
                             div.className = "space-y-3";
                             div.innerHTML = `
-                <div class="flex justify-between items-end">
-                  <div>
-                    <p class="text-xs font-bold text-on-surface">${topic}</p>
+                <div class="flex justify-between items-center">
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-bold text-on-surface truncate pr-2">${topic}</p>
                     <p class="text-[10px] font-bold tracking-tight uppercase" style="color:${color}">${label}</p>
                   </div>
-                  <span class="text-sm font-black text-on-surface">${pct}%</span>
+                  <div class="flex items-center gap-1.5 flex-shrink-0">
+                    <button title="Remove topic"
+                        style="color:rgba(255,110,132,0.35); background:transparent; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all 0.15s; border:none; cursor:pointer; flex-shrink:0;"
+                        onmouseenter="this.style.color='#ff6e84';this.style.background='rgba(255,110,132,0.15)'"
+                        onmouseleave="this.style.color='rgba(255,110,132,0.35)';this.style.background='transparent'"
+                        onclick="deleteSidebarTopic('${subject}', '${topic}')">
+                      <span class="material-symbols-outlined" style="font-size:13px">close</span>
+                    </button>
+                    <span class="text-sm font-black text-on-surface">${pct}%</span>
+                  </div>
                 </div>
                 <div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
                   <div class="h-full bg-gradient-to-r ${gradFrom} ${gradTo} rounded-full" style="width:${pct}%"></div>
@@ -935,6 +987,62 @@
                     container.innerHTML = `<p class="text-xs text-on-surface-variant opacity-50">Complete quizzes to build your profile.</p>`;
                 }
             }
+
+            window.deleteSidebarTopic = async function(subject, topic) {
+                if (!confirm(`Remove "${topic}" from your Knowledge Profile?`)) return;
+                await fetch(`${API}/api/profile/${encodeURIComponent(subject)}/${encodeURIComponent(topic)}`, { method: "DELETE" });
+                loadProfile();
+            };
+
+
+            // ── Subjects Management ───────────────────────────────────────
+
+            async function loadSubjects() {
+                const res = await fetch(`${API}/api/subjects`).then(r => r.json());
+                renderSubjectChips(res.subjects || []);
+            }
+
+            function renderSubjectChips(subjects) {
+                const container = document.getElementById("subjects-chips");
+                if (!container) return;
+                container.innerHTML = "";
+                if (subjects.length === 0) {
+                    container.innerHTML = `<span class="text-[10px] text-on-surface-variant/40 italic">No subjects added yet — all CS topics will be used.</span>`;
+                    return;
+                }
+                subjects.forEach(subject => {
+                    const chip = document.createElement("div");
+                    chip.className = "flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-secondary text-xs font-bold";
+                    chip.innerHTML = `
+                        <span class="material-symbols-outlined text-[12px]" style="font-variation-settings:'FILL' 1">school</span>
+                        ${subject}
+                        <button onclick="removeSubject('${subject}')"
+                            class="ml-1 text-secondary/50 hover:text-error transition-colors">
+                            <span class="material-symbols-outlined text-[12px]">close</span>
+                        </button>`;
+                    container.appendChild(chip);
+                });
+            }
+
+            window.addSubject = async function() {
+                const input = document.getElementById("subject-input");
+                const subject = input.value.trim();
+                if (!subject) return;
+                input.value = "";
+                const res = await fetch(`${API}/api/subjects`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ subject })
+                }).then(r => r.json());
+                renderSubjectChips(res.subjects || []);
+            };
+
+            window.removeSubject = async function(subject) {
+                const res = await fetch(`${API}/api/subjects/${encodeURIComponent(subject)}`, {
+                    method: "DELETE"
+                }).then(r => r.json());
+                renderSubjectChips(res.subjects || []);
+            };
 
             // ── View Switcher ─────────────────────────────────────────
 

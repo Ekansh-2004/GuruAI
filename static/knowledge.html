@@ -267,25 +267,54 @@
                     const pct = Math.round(score * 100);
                     const url = `/topic.html?topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subjectName)}&level=${level}&score=${pct}`;
                     const div = document.createElement("div");
-                    div.className = `bg-surface-container p-4 rounded-xl transition-all cursor-pointer group relative border border-${twColor}/10 hover:border-${twColor}/40 hover:bg-surface-container-high hover:shadow-lg`;
-                    div.onclick = () => window.location.href = url;
+                    div.className = `bg-surface-container p-4 rounded-xl transition-all cursor-pointer relative border border-${twColor}/10 hover:border-${twColor}/40 hover:bg-surface-container-high hover:shadow-lg`;
+                    div.onclick = (e) => {
+                        if (e.target.closest(".delete-topic-btn")) return;
+                        window.location.href = url;
+                    };
                     div.innerHTML = `
-                        <div class="flex justify-between mb-2 pr-10">
-                            <h4 class="font-bold text-sm text-on-surface group-hover:text-${twColor} transition-colors">${topic}</h4>
-                            <span class="text-${twColor} font-bold text-sm">${pct}%</span>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-bold text-sm text-on-surface flex-1 pr-2">${topic}</h4>
+                            <div class="flex items-center gap-2 flex-shrink-0">
+                                <span class="text-${twColor} font-bold text-sm">${pct}%</span>
+                                <button class="delete-topic-btn w-6 h-6 rounded-full flex items-center justify-center transition-all"
+                                    style="color:rgba(255,110,132,0.4); background:transparent;"
+                                    onmouseenter="this.style.color='#ff6e84';this.style.background='rgba(255,110,132,0.15)'"
+                                    onmouseleave="this.style.color='rgba(255,110,132,0.4)';this.style.background='transparent'"
+                                    title="Remove topic"
+                                    onclick="window.deleteTopic('${subjectName}', '${topic}')">
+                                    <span class="material-symbols-outlined" style="font-size:15px">close</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="h-1.5 w-[calc(100%-2.5rem)] bg-surface-container-highest rounded-full overflow-hidden">
+                        <div class="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
                             <div class="h-full bg-${twColor} rounded-full transition-all" style="width:${pct}%"></div>
-                        </div>
-                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-${twColor}/50 group-hover:text-${twColor} group-hover:translate-x-1 transition-all material-symbols-outlined text-[18px]">arrow_forward</span>`;
+                        </div>`;
                     container.appendChild(div);
                 });
             }
+
+            window.deleteTopic = async function(subject, topic) {
+                if (!confirm(`Remove "${topic}" from your Knowledge Profile? This cannot be undone.`)) return;
+                await fetch(`/api/profile/${encodeURIComponent(subject)}/${encodeURIComponent(topic)}`, { method: "DELETE" });
+                // Refresh the profile data and re-render
+                const data = await fetch("/api/profile").then(r => r.json());
+                const updatedSubject = data[subject];
+                if (updatedSubject) {
+                    window.showSubjectDetails(subject, updatedSubject);
+                } else {
+                    // Subject has no more topics — go back to folders view
+                    window.showFolders();
+                }
+                // Also refresh the folder grid
+                loadProfile();
+            };
 
             processLevel("strong", "strong-column-content", "strong-count", "tertiary", false);
             processLevel("average", "average-column-content", "average-count", "secondary", false);
             processLevel("weak", "weak-column-content", "weak-count", "error", true);
         };
+
 
         async function loadProfile() {
             try {

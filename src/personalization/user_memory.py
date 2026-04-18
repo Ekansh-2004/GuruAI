@@ -9,13 +9,13 @@ Two responsibilities:
 
 import json
 import os
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 from typing import List
-from src.core.config import GOOGLE_API_KEY
+from src.core.config import GROQ_API_KEY
 
 MEMORY_FILE = "user_memory.json"
 
@@ -115,9 +115,7 @@ Student's message: "{message}"
 
 
 def extract_preferences_from_message(message: str) -> list[str]:
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", google_api_key=GOOGLE_API_KEY, temperature=0.2
-    )
+    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0)
     parser = JsonOutputParser(pydantic_object=ExtractedPreferences)
     prompt = EXTRACT_PROMPT.partial(format_instructions=parser.get_format_instructions())
     chain = prompt | model | parser
@@ -169,9 +167,7 @@ def memory_chat(user_message: str) -> tuple[str, list[str]]:
     stored_str = "\n".join(f"- {i}" for i in stored) if stored else "None yet"
 
     # 3. Call LLM for conversational response
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", google_api_key=GOOGLE_API_KEY, temperature=0.7
-    )
+    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0, streaming=True)
     prompt = ChatPromptTemplate.from_messages([
         ("system", MEMORY_CHAT_SYSTEM),
         *[(("human" if m.type == "human" else "ai"), m.content) for m in formatted_history],
@@ -200,3 +196,46 @@ def get_memory_as_system_context() -> str:
     lines = "\n".join(f"- {item}" for item in items)
     return f"""PERSISTENT USER PREFERENCES (apply these in every response without being asked):
 {lines}"""
+
+
+# ── Subject Management ─────────────────────────────────────────────────────────
+
+def load_subjects() -> list[str]:
+    """Return the list of subjects the student has registered."""
+    return _load_data().get("subjects", [])
+
+
+def save_subject(subject: str) -> list[str]:
+    """Add a subject if not already present. Returns updated list."""
+    data = _load_data()
+    subjects = data.get("subjects", [])
+    subject = subject.strip().title()
+    if subject and subject not in subjects:
+        subjects.append(subject)
+        data["subjects"] = subjects
+        _save_data(data)
+    return subjects
+
+
+def delete_subject(subject: str) -> list[str]:
+    """Remove a subject by name. Returns updated list."""
+    data = _load_data()
+    subjects = data.get("subjects", [])
+    subject = subject.strip().title()
+    if subject in subjects:
+        subjects.remove(subject)
+        data["subjects"] = subjects
+        _save_data(data)
+    return subjects
+
+
+def get_subjects_prompt_constraint() -> str:
+    """Return a formatted string to inject into LLM prompts restricting subject classification."""
+    subjects = load_subjects()
+    if not subjects:
+        return ""
+    formatted = ", ".join(f'"{s}"' for s in subjects)
+    return f"""SUBJECT CLASSIFICATION CONSTRAINT:
+The student is currently studying these subjects ONLY: {formatted}.
+You MUST map every topic/question to one of these exact subject names.
+Do NOT use any other subject name outside this list."""

@@ -1,9 +1,9 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
 from typing import List
-from src.core.config import GOOGLE_API_KEY
+from src.core.config import GROQ_API_KEY
 
 
 # ── Adaptive Explanation ──────────────────────────────────────────────────────
@@ -35,9 +35,10 @@ Mastery Level: {mastery_level}
 
 def generate_topic_explanation(topic: str, subject: str, mastery_level: str, score_pct: int) -> str:
     """Generate an adaptive explanation for a topic based on the student's mastery."""
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=GOOGLE_API_KEY,
+    model = ChatGroq(
+        model="llama-3.3-70b-versatile",
+        api_key=GROQ_API_KEY,
+        max_retries=0,
         temperature=0.5,
     )
     chain = EXPLAIN_PROMPT | model | StrOutputParser()
@@ -79,12 +80,9 @@ Do not include markdown outside the JSON block.""",
 
 def generate_topic_quiz(topic: str, subject: str, mastery_level: str, score_pct: int) -> dict:
     """Generate an adaptive quiz about a specific topic."""
-    model = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        google_api_key=GOOGLE_API_KEY,
-        temperature=0.7,
-    )
+    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0, temperature=0.7)
     parser = JsonOutputParser(pydantic_object=TopicQuiz)
+
     prompt = TOPIC_QUIZ_PROMPT.partial(format_instructions=parser.get_format_instructions())
     chain = prompt | model | parser
     try:

@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 150
-TOP_K = 4
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+CHUNK_SIZE = 400
+CHUNK_OVERLAP = 45
+TOP_K = 3

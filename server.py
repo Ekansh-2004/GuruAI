@@ -34,7 +34,7 @@ def get_retriever(session_id: str):
     if session_id not in _retriever_cache:
         db = load_existing_vectorstore(session_id)
         if db:
-            _retriever_cache[session_id] = db.as_retriever(search_kwargs={"k": 4})
+            _retriever_cache[session_id] = db.as_retriever(search_kwargs={"k": 3})
         else:
             return None
     return _retriever_cache[session_id]
@@ -141,6 +141,23 @@ async def upload_and_build(
 def get_documents(session_id: str):
     return tracker.get_session_documents(session_id)
 
+@app.delete("/api/sessions/{session_id}/knowledge")
+def delete_knowledge_base(session_id: str):
+    """Wipe the FAISS vector store and document list for a session, keeping chat history intact."""
+    import shutil
+    # Remove FAISS index from disk
+    db_path = os.path.join(os.getcwd(), "faiss_index_db", session_id)
+    if os.path.exists(db_path):
+        shutil.rmtree(db_path)
+    # Remove from retriever cache
+    _retriever_cache.pop(session_id, None)
+    # Clear document metadata from session
+    data = tracker.load_all_sessions()
+    if session_id in data:
+        data[session_id]["documents"] = []
+        tracker.save_all_sessions(data)
+    return {"status": "knowledge base cleared"}
+
 
 # ── Chat ────────────────────────────────────────────────
 class ChatRequest(BaseModel):
@@ -154,12 +171,17 @@ def chat(req: ChatRequest):
         raise HTTPException(status_code=400, detail="No database built for this session. Please upload documents first.")
 
     profile_summary = build_profile_summary()
+    print(profile_summary)
     memory_context = user_memory.get_memory_as_system_context()
     chain = build_rag_chain(retriever, knowledge_profile_summary=profile_summary, user_memory_context=memory_context)
 
     history_raw = tracker.get_session_messages(req.session_id)
     # Filter out quiz messages from LLM history
     text_history = [m for m in history_raw if m["role"] in ("user", "assistant")]
+
+    # Token optimization: Limit history to the last 4 messages (2 QA pairs)
+    if len(text_history) > 4:
+        text_history = text_history[-4:]
 
     if not text_history:
         title = req.question[:25] + "..." if len(req.question) > 25 else req.question
@@ -198,7 +220,7 @@ def generate_quiz(session_id: str):
     path = f"faiss_index_db/{session_id}/index.faiss"
     if not os.path.exists(path):
         raise HTTPException(status_code=400, detail="Build the database first.")
-    quiz = generate_quiz_for_session_db(session_id)
+    quiz = generate_quiz_for_session_db(session_id, user_subjects=user_memory.load_subjects())
     if not quiz or not quiz.get("questions"):
         raise HTTPException(status_code=500, detail="Quiz generation failed.")
     tracker.save_quiz(session_id, quiz)         # Keep for topic.html backwards compat
@@ -226,6 +248,34 @@ def submit_answer(req: QuizAnswerRequest):
 def get_profile():
     return tracker.get_performance_areas()
 
+@app.delete("/api/profile/{subject}/{topic}")
+def delete_profile_topic(subject: str, topic: str):
+    """Permanently remove a topic from the student's global knowledge profile."""
+    tracker.delete_topic(subject, topic)
+    return {"status": "deleted", "subject": subject, "topic": topic}
+
+
+# ── User Subjects ───────────────────────────────────────
+
+class SubjectRequest(BaseModel):
+    subject: str
+
+@app.get("/api/subjects")
+def get_subjects():
+    """Return all registered subjects."""
+    return {"subjects": user_memory.load_subjects()}
+
+@app.post("/api/subjects")
+def add_subject(req: SubjectRequest):
+    """Add a new subject to the user's study profile."""
+    updated = user_memory.save_subject(req.subject)
+    return {"subjects": updated}
+
+@app.delete("/api/subjects/{subject}")
+def remove_subject(subject: str):
+    """Remove a subject from the user's study profile."""
+    updated = user_memory.delete_subject(subject)
+    return {"subjects": updated}
 
 # ── Topic Tutor ─────────────────────────────────────────
 class TopicExplainRequest(BaseModel):

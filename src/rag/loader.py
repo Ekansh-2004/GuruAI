@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 def load_documents(file_data: List[Tuple[str, bytes]]) -> List[Document]:
     """Load and chunk multiple files."""
     all_docs = []
-    splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=45)
     
     for name, data in file_data:
         ext = os.path.splitext(name)[1].lower()

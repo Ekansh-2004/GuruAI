@@ -114,8 +114,13 @@ def get_quiz(session_id: str) -> dict:
 
 # --- Global Student Profile / Knowledge Base ---
 
+# EMA smoothing factor — controls how much weight the latest answer carries.
+# α=0.3 means: new_score = (current_answer × 0.3) + (old_score × 0.7)
+# A single correct answer from 0% only raises score to 30%, not 100%.
+_EMA_ALPHA = 0.3
+
 def update_topic_performance(session_id: str, subject: str, topic: str, correct: bool):
-    """Record quiz performance in the session database so it can be dynamically subtracted when deleted."""
+    """Record quiz performance and update the EMA score for the topic."""
     data = load_all_sessions()
     if session_id not in data:
         return
@@ -130,11 +135,19 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
         
     t = topic.title().strip()
     if t not in session_data["topic_scores"][subj]:
-        session_data["topic_scores"][subj][t] = {"correct": 0, "total": 0}
+        # First attempt — no prior history, seed EMA with the first result directly
+        session_data["topic_scores"][subj][t] = {"correct": 0, "total": 0, "ema_score": None}
         
-    session_data["topic_scores"][subj][t]["total"] += 1
+    entry = session_data["topic_scores"][subj][t]
+    entry["total"] += 1
     if correct:
-        session_data["topic_scores"][subj][t]["correct"] += 1
+        entry["correct"] += 1
+
+    recent = 1.0 if correct else 0.0
+    prev = entry["ema_score"] if entry["ema_score"] is not None else 0.0
+    # EMA formula: NewScore = (recent × α) + (previous × (1 − α))
+    # Starting from a neutral 0.0 baseline means a first correct answer = 0.30, NOT 1.0.
+    entry["ema_score"] = (recent * _EMA_ALPHA) + (prev * (1 - _EMA_ALPHA))
         
     save_all_sessions(data)
 
@@ -151,16 +164,27 @@ def get_performance_areas():
                 global_subjects[subj] = {}
             for t, stats in topics.items():
                 if t not in global_subjects[subj]:
-                    global_subjects[subj][t] = {"correct": 0, "total": 0}
+                    global_subjects[subj][t] = {"correct": 0, "total": 0, "ema_score": None}
                 global_subjects[subj][t]["correct"] += stats["correct"]
                 global_subjects[subj][t]["total"] += stats["total"]
+                # EMA: chain the per-session EMA score using the same alpha.
+                # For aggregation across sessions, we treat each session's final EMA
+                # as a new "observation" and run the global EMA on top of it.
+                session_ema = stats.get("ema_score")
+                if session_ema is not None:
+                    if global_subjects[subj][t]["ema_score"] is None:
+                        global_subjects[subj][t]["ema_score"] = session_ema
+                    else:
+                        g = global_subjects[subj][t]["ema_score"]
+                        global_subjects[subj][t]["ema_score"] = (session_ema * _EMA_ALPHA) + (g * (1 - _EMA_ALPHA))
     
     result = {}
     for subj, topics in global_subjects.items():
         weak, average, strong = [], [], []
         for t, stats in topics.items():
             if stats["total"] == 0: continue
-            score = stats["correct"] / stats["total"]
+            # Use EMA score for classification; fall back to raw % for old data without ema_score
+            score = stats["ema_score"] if stats.get("ema_score") is not None else (stats["correct"] / stats["total"])
             if score < 0.5:
                 weak.append((t, score, stats["correct"], stats["total"]))
             elif score <= 0.75:
@@ -175,3 +199,20 @@ def get_performance_areas():
         }
             
     return result
+
+def delete_topic(subject: str, topic: str):
+    """Remove a topic's score data from ALL sessions, erasing it from the global knowledge profile."""
+    data = load_all_sessions()
+    subj_key = subject.title().strip()
+    topic_key = topic.title().strip()
+    changed = False
+    for sid, session in data.items():
+        scores = session.get("topic_scores", {})
+        if subj_key in scores and topic_key in scores[subj_key]:
+            del scores[subj_key][topic_key]
+            # Clean up empty subject entry
+            if not scores[subj_key]:
+                del scores[subj_key]
+            changed = True
+    if changed:
+        save_all_sessions(data)
