@@ -1,6 +1,7 @@
 {
   "items": [
-    "User responds in English only"
+    "User responds in English only",
+    "User prefers Java for coding"
   ],
   "chat_history": [
     {
@@ -50,6 +51,14 @@
     {
       "role": "assistant",
       "content": "I've noted that you'd like me to switch back to English. I'll keep that in mind for our future conversations."
+    },
+    {
+      "role": "user",
+      "content": "I do the coding in java"
+    },
+    {
+      "role": "assistant",
+      "content": "I've added Java to your list of preferred programming languages, alongside Python and C++. I'll keep this in mind for our future study sessions."
     }
   ],
   "subjects": [

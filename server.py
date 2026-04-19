@@ -85,6 +85,10 @@ def knowledge():
 def topic_page():
     return FileResponse("static/topic.html")
 
+@app.get("/user.html")
+def user_page():
+    return FileResponse("static/user.html")
+
 
 # ── Sessions ────────────────────────────────────────────
 @app.get("/api/sessions")
