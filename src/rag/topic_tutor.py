@@ -80,7 +80,7 @@ Do not include markdown outside the JSON block.""",
 
 def generate_topic_quiz(topic: str, subject: str, mastery_level: str, score_pct: int) -> dict:
     """Generate an adaptive quiz about a specific topic."""
-    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0, temperature=0.7)
+    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0, temperature=0.7)
     parser = JsonOutputParser(pydantic_object=TopicQuiz)
 
     prompt = TOPIC_QUIZ_PROMPT.partial(format_instructions=parser.get_format_instructions())

@@ -10,7 +10,7 @@ def format_docs(docs):
 
 def build_rag_chain(retriever, knowledge_profile_summary: str = "", user_memory_context: str = ""):
     # Switched from 70B to 8B instant. 8B gives 30,000 Tokens/min (5x more than 70B!)
-    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0)
+    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
 
     # ── 1. User Memory ────────────────────────────────────────────────────────
     memory_section = ""

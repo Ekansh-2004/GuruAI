@@ -115,7 +115,7 @@ Student's message: "{message}"
 
 
 def extract_preferences_from_message(message: str) -> list[str]:
-    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0)
+    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
     parser = JsonOutputParser(pydantic_object=ExtractedPreferences)
     prompt = EXTRACT_PROMPT.partial(format_instructions=parser.get_format_instructions())
     chain = prompt | model | parser
@@ -167,7 +167,7 @@ def memory_chat(user_message: str) -> tuple[str, list[str]]:
     stored_str = "\n".join(f"- {i}" for i in stored) if stored else "None yet"
 
     # 3. Call LLM for conversational response
-    model = ChatGroq(model="llama-3.1-8b-instant", api_key=GROQ_API_KEY, max_retries=0, streaming=True)
+    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0, streaming=True)
     prompt = ChatPromptTemplate.from_messages([
         ("system", MEMORY_CHAT_SYSTEM),
         *[(("human" if m.type == "human" else "ai"), m.content) for m in formatted_history],

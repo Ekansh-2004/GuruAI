@@ -34,7 +34,7 @@ def create_session(title="New Chat") -> str:
         "title": title,
         "messages": [],
         "topic_scores": {}, 
-        "documents": [], # <-- ADD THIS LINE
+        "documents": [], 
         "updated_at": str(datetime.now())
     }
     save_all_sessions(data)
