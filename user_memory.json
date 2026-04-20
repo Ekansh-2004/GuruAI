@@ -59,11 +59,23 @@
     {
       "role": "assistant",
       "content": "I've added Java to your list of preferred programming languages, alongside Python and C++. I'll keep this in mind for our future study sessions."
+    },
+    {
+      "role": "user",
+      "content": "When I say to ELI5, it means to explain like I am 5"
+    },
+    {
+      "role": "assistant",
+      "content": "I've got it. When you say \"ELI5\", I'll explain things in a super simple way, as if you're 5 years old. I'll use easy-to-understand language and examples."
     }
   ],
   "subjects": [
     "It Act And Data Protection",
     "Vehicular Ad Hoc And Network Security",
     "Deep Learning In Computer Vision"
-  ]
+  ],
+  "profile": {
+    "name": "Ekansh Chauhan",
+    "bio": "Highly passionate student with deep enthusiasm for Computer Science"
+  }
 }

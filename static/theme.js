@@ -1,5 +1,5 @@
 /**
- * theme.js — Shared light / dark mode engine for The Illuminated Scholar.
+ * theme.js — Shared light / dark mode engine for GuruAI.
  * Include this script on every page with:  <script src="/theme.js"></script>
  * The theme toggle button should call window.toggleTheme() on click.
  */

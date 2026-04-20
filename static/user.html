@@ -4,7 +4,7 @@
 <script>if(localStorage.getItem('scholar-theme')==='light')document.documentElement.setAttribute('data-theme','light');</script>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>User Profile - The Illuminated Scholar</title>
+<title>User Profile - GuruAI</title>
 
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -206,7 +206,7 @@
                 <!-- Name and Level stacked side-by-side with avatar -->
                 <div class="flex flex-col text-left">
                     <h1 id="display-name" class="text-3xl font-extrabold font-headline text-white tracking-tight leading-tight dark-invert-text">The Scholar</h1>
-                    <p id="display-level" class="text-primary font-bold text-[15px] tracking-wide mt-0.5">Level 14 Adept</p>
+
                 </div>
             </div>
 
@@ -231,15 +231,15 @@
                 <div class="card-container rounded-3xl p-8 flex flex-col justify-center items-center transition-all">
                     <p class="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">done_all</span> Total Quizzes Attempted</p>
                     <div class="flex items-baseline gap-2">
-                        <span class="text-[3.5rem] font-black font-headline tracking-tighter text-primary leading-none">1,284</span>
-                        <span class="text-[#a5eea0] font-bold text-sm bg-[#a5eea0]/10 px-2 py-1 rounded-md">+12%</span>
+                        <span id="stat-quizzes" class="text-[3.5rem] font-black font-headline tracking-tighter text-primary leading-none">—</span>
+
                     </div>
                 </div>
                 <div class="card-container rounded-3xl p-8 flex flex-col justify-center items-center transition-all">
                     <p class="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant mb-3 flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">military_tech</span> Average Mastery Score</p>
                     <div class="flex items-baseline gap-2">
-                        <span class="text-[3.5rem] font-black font-headline tracking-tighter text-[#00e3fd] leading-none">94.2%</span>
-                        <span class="text-[#00e3fd] font-bold text-sm bg-[#00e3fd]/10 px-2 py-1 rounded-md">Top 1%</span>
+                        <span id="stat-mastery" class="text-[3.5rem] font-black font-headline tracking-tighter text-[#00e3fd] leading-none">—</span>
+
                     </div>
                 </div>
             </div>
@@ -415,14 +415,42 @@
             }
         }
 
-        function saveProfile() {
-            const newName = document.getElementById('input-name').value;
-            const newBio = document.getElementById('input-bio').value;
-            
+        async function saveProfile() {
+            const newName = document.getElementById('input-name').value.trim() || 'The Scholar';
+            const newBio  = document.getElementById('input-bio').value.trim();
+
+            try {
+                await fetch('/api/user/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newName, bio: newBio }),
+                });
+            } catch (e) {
+                console.error('Failed to save profile', e);
+            }
+
             document.getElementById('display-name').textContent = newName;
             document.getElementById('display-bio').textContent = newBio;
-            
+
             toggleEditMode(false);
+        }
+
+        async function loadProfile() {
+            try {
+                const profile = await fetch('/api/user/profile').then(r => r.json());
+                document.getElementById('display-name').textContent = profile.name || 'The Scholar';
+                document.getElementById('display-bio').textContent  = profile.bio  || '';
+                document.getElementById('input-name').value = profile.name || 'The Scholar';
+                document.getElementById('input-bio').value  = profile.bio  || '';
+            } catch (e) { console.error('Failed to load profile', e); }
+        }
+
+        async function loadStats() {
+            try {
+                const stats = await fetch('/api/user/stats').then(r => r.json());
+                document.getElementById('stat-quizzes').textContent = stats.total_questions.toLocaleString();
+                document.getElementById('stat-mastery').textContent = stats.average_mastery_pct + '%';
+            } catch (e) { console.error('Failed to load stats', e); }
         }
 
         // --- PREFERENCES LOGIC (View Mode) ---
@@ -597,6 +625,8 @@
         document.addEventListener("DOMContentLoaded", () => {
             applyThemeIcon();
             fetchPreferences();
+            loadProfile();
+            loadStats();
         });
     </script>
 </body>

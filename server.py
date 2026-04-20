@@ -354,5 +354,56 @@ def memory_chat_message(req: MemoryMessageRequest):
     }
 
 
+# ── User Profile ──────────────────────────────────────────────────────────────
+
+class UserProfileRequest(BaseModel):
+    name: str
+    bio: str
+
+@app.get("/api/user/profile")
+def get_user_profile():
+    """Return the user's stored display name and bio."""
+    return user_memory.load_user_profile()
+
+@app.post("/api/user/profile")
+def save_user_profile(req: UserProfileRequest):
+    """Persist the user's display name and bio."""
+    return user_memory.save_user_profile(req.name, req.bio)
+
+
+# ── User Stats ────────────────────────────────────────────────────────────────
+
+@app.get("/api/user/stats")
+def get_user_stats():
+    """
+    Compute:
+    - total_questions: total number of quiz questions answered across all sessions.
+    - average_mastery_pct: average EMA score (0-100) across all unique topics.
+    """
+    data = tracker.load_all_sessions()
+    total_questions = 0
+    all_ema_scores = []
+
+    for session in data.values():
+        for subj_topics in session.get("topic_scores", {}).values():
+            for stats in subj_topics.values():
+                total_questions += stats.get("total", 0)
+                score = stats.get("ema_score")
+                if score is not None:
+                    all_ema_scores.append(score)
+
+    avg_mastery = round((sum(all_ema_scores) / len(all_ema_scores)) * 100, 1) if all_ema_scores else 0.0
+
+    return {
+        "total_questions": total_questions,
+        "average_mastery_pct": avg_mastery,
+    }
+
+
+@app.get("/user.html")
+def user_page():
+    return FileResponse("static/user.html")
+
+
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

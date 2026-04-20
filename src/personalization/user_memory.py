@@ -67,6 +67,22 @@ def clear_all_memory():
     _save_data(data)
 
 
+# ── User Profile ───────────────────────────────────────────────────────────────
+
+def load_user_profile() -> dict:
+    """Return the user's display name and bio."""
+    data = _load_data()
+    return data.get("profile", {"name": "The Scholar", "bio": ""})
+
+
+def save_user_profile(name: str, bio: str) -> dict:
+    """Persist the user's display name and bio."""
+    data = _load_data()
+    data["profile"] = {"name": name.strip(), "bio": bio.strip()}
+    _save_data(data)
+    return data["profile"]
+
+
 # ── Memory Chat History ───────────────────────────────────────────────────────
 
 def get_chat_history() -> list[dict]:

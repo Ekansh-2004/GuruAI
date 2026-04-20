@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>The Illuminated Scholar</title>
+    <title>GuruAI</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link
@@ -477,6 +477,12 @@
             background: #e8e2fb !important;
             color: #4a3a6a !important;
         }
+        html[data-theme="light"] .quiz-option.correct { 
+            background: #dcfce7 !important; /* Light green background */
+            border-color: #16a34a !important; /* Vibrant green border */
+            color: #166534 !important;      /* Dark green text for readability */
+            font-weight: 600 !important;
+        }
         /* Quiz card header */
         html[data-theme="light"] .quiz-feed-card [class*="bg-surface-container-high"] {
             background: #e2d8f7 !important;
@@ -618,7 +624,7 @@
                     <span class="material-symbols-outlined text-on-primary-fixed text-sm"
                         style="font-variation-settings:'FILL' 1">auto_stories</span>
                 </div>
-                <h1 class="text-xl font-bold tracking-tight text-[#f6f3f5]">The Scholar</h1>
+                <h1 id="sidebar-app-title" class="text-xl font-bold tracking-tight text-[#f6f3f5]">The Scholar</h1>
             </div>
 
             <div class="px-4 mb-8">
@@ -671,8 +677,7 @@
                             src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8FTVxMxdbx6PJwCCHMcqTv6AXE94gC9SL37mcBOzCXXv6U2ihHSKPKZITwrn_TtjN76-w7lqZiOEV1AqRrMpl4dNw79FZkSznR4Qcw6VH3hZmX7qO6BJpoCC375DOSLxqoMyFAuv1eoKlidt3mBAgwOkZy8a9sb7apll5jw8gOwrOujf-DOhUj2fTIYMcX-tpGjCpDPs4iuWXwWxCi8p5j4QLcJjp1f5X9eELMSVtd6z1_OewXnJZGWfFeVrF0FyuXnjx3EGZYazx" />
                     </div>
                     <div>
-                        <p class="text-sm font-bold text-[#f6f3f5]">The Scholar</p>
-                        <p class="text-[10px] text-[#d095ff] font-semibold">Level 14 Adept</p>
+                        <p id="sidebar-user-name" class="text-sm font-bold text-[#f6f3f5]">The Scholar</p>
                     </div>
                 </div>
                 <div
@@ -760,8 +765,7 @@
                 class="bg-[#0e0e10]/80 backdrop-blur-xl w-full h-16 sticky top-0 z-50 flex justify-between items-center px-8 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
                 <div class="flex items-center gap-8">
                     <span
-                        class="text-lg font-black bg-gradient-to-br from-[#d095ff] to-[#c782ff] bg-clip-text text-transparent">The
-                        Illuminated Scholar</span>
+                        class="text-lg font-black bg-gradient-to-br from-[#d095ff] to-[#c782ff] bg-clip-text text-transparent">GuruAI</span>
                    
                 </div>
                 <div class="flex items-center gap-4">
@@ -899,6 +903,18 @@
                 checkDbStatus(activeSessionId);
                 loadDocuments(activeSessionId);
                 loadSubjects();
+                loadUserName();
+            }
+
+            async function loadUserName() {
+                try {
+                    const profile = await fetch(`${API}/api/user/profile`).then(r => r.json());
+                    const name = profile.name || 'The Scholar';
+                    const titleEl = document.getElementById('sidebar-app-title');
+                    const nameEl  = document.getElementById('sidebar-user-name');
+                    if (titleEl) titleEl.textContent = name;
+                    if (nameEl)  nameEl.textContent  = name;
+                } catch (e) { /* silently ignore — defaults stay */ }
             }
 
             function renderSessions(sessions) {
