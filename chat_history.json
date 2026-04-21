@@ -271,6 +271,14 @@
       {
         "role": "assistant",
         "content": "[ADAPTIVITY TRIGGERED: STRONG TOPIC]\n\nOne-shot learning refers to a type of machine learning approach where a model is trained to recognize or classify new, unseen data after being exposed to only a single example or instance of that data. This is in contrast to traditional machine learning approaches, which typically require large amounts of training data to achieve good performance.\n\nIn the context of neural networks, one-shot learning is often achieved through the use of Siamese Networks, which are designed to learn a compact representation of the input data that can be used for comparison and verification. This allows the model to recognize new data based on its similarity to the single example it was trained on.\n\nThe concept of one-shot learning is closely related to the idea of learning a decision boundary, similar to the Perceptron, but with the added complexity of dealing with non-linearly separable data. While a single Perceptron is limited in its ability to handle such data, more advanced models like Siamese Networks can learn to recognize patterns and make decisions based on a single example.\n\nThe key characteristics of one-shot learning include:\n\n* Learning from a single example\n* Recognizing new, unseen data based on similarity to the training example\n* Ability to handle non-linearly separable data\n* Often achieved through the use of specialized neural network architectures, such as Siamese Networks\n\nThis approach has significant implications for real-world applications, where data may be scarce or difficult to obtain, and the ability to learn from a single example can be a major advantage. [Textbook]"
+      },
+      {
+        "role": "user",
+        "content": "What is perceptron"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: AVERAGE TOPIC]\n\nA perceptron is a type of artificial neural network that is considered the basic building block of more complex neural networks. It was first proposed by Frank Rosenblatt in 1958. The perceptron is designed to separate the input space into two distinct regions, based on the inputs it receives.\n\nThink of a perceptron as a simple decision-making unit that takes in multiple real-valued inputs, assigns weights to each input, and then makes a decision based on the weighted sum of those inputs. The perceptron also has a bias term, which represents the prior or prejudice of the decision-making unit.\n\nMathematically, the perceptron can be represented as follows: the output y\u0302 is determined by the weighted sum of the inputs, z = \u03a3 wj xj, where wj are the weights, xj are the inputs, and the bias term w0 is represented as -\u03b8. The output y\u0302 is then determined by the following rule: y\u0302 = 1 if z \u2265 0 and y\u0302 = 0 if z < 0.\n\nThe perceptron is capable of learning the weights and bias term through a mechanism for learning, allowing it to adapt to different input patterns. The decision boundary of a perceptron is linearly separable, meaning it can be represented by a linear equation of the form wTx = 0.\n\nTo illustrate this concept, consider a simple example where you want to classify objects as either \"big\" or \"small\" based on their size. The perceptron would take in the size of the object as input, assign a weight to that input, and then make a decision based on the weighted sum. If the weighted sum is above a certain threshold, the perceptron would classify the object as \"big\", otherwise it would classify it as \"small\".\n\n### Context/Sources Used:\n[Textbook] Perceptron separates input space into two, but: Weights (and threshold) can be learned, Inputs are real-valued. \n[Textbook] Classical Perceptron: Frank Rosenblatt proposed classic perceptron (1958), Numerical weights for inputs and mechanism for learning weights, Inputs not limited to Boolean values. \n[Textbook] Perceptron \u2013 Basic Building Block: \ud835\udc640/\ud835\udc4f: bias, represents the prior or prejudice, z = \u03a3 wj xj, w0 = -\u03f4 x0 = 1."
       }
     ],
     "topic_scores": {
@@ -306,41 +314,40 @@
           "ema_score": 0.9
         }
       },
-      "Vehicular Ad Hoc and Network Security":{
-        "V2X Communication":{
+      "Vehicular Ad Hoc and Network Security": {
+        "V2X Communication": {
           "correct": 0,
           "total": 1,
           "ema_score": 0.1
         },
-        "V2V Communication":{
+        "V2V Communication": {
           "correct": 0,
           "total": 1,
           "ema_score": 0.5
         },
-        "QUIC":{
+        "QUIC": {
           "correct": 0,
           "total": 1,
           "ema_score": 0.2
         }
       },
-      "IT Act and Data Protection":{
-        "Data Fudiciary":{
+      "IT Act and Data Protection": {
+        "Data Fudiciary": {
           "correct": 0,
           "total": 1,
           "ema_score": 0.1
         },
-        "Data Principal":{
+        "Data Principal": {
           "correct": 0,
           "total": 1,
           "ema_score": 0.5
         },
-        "Consent Manager":{
+        "Consent Manager": {
           "correct": 0,
           "total": 1,
           "ema_score": 0.2
         }
       }
-
     },
     "documents": [
       {
@@ -348,7 +355,7 @@
         "size": 1350896
       }
     ],
-    "updated_at": "2026-04-19 01:03:42.160824",
+    "updated_at": "2026-04-21 15:34:17.333414",
     "quiz": {
       "questions": [
         {
@@ -405,5 +412,33 @@
         }
       ]
     }
+  },
+  "54c34901-993c-4e5a-a97a-dba1f703e884": {
+    "title": "What are Regulatory bodie...",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What are Regulatory bodies for VANET"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: AVERAGE TOPIC]\nRegulatory bodies play a crucial role in shaping the standards for Vehicular Ad-hoc Networks (VANETs). There are three key regulatory bodies that have developed standards for VANETs. \n\nFirstly, the IEEE has developed the Wireless LAN Standard in the US, which provides a framework for wireless communication in VANETs. \n\nSecondly, the ETSI (European Telecommunications Standards Institute) has developed telecommunications standards for Europe, ensuring that VANETs in Europe adhere to specific guidelines.\n\nLastly, the 3GPP (3rd Generation Partnership Project) has created global standards for mobile communication systems and cellular systems, including 3G UMTS, 4G LTE, and 5G NR, which are essential for the development of VANETs.\n\nThese regulatory bodies work together to ensure that VANETs operate efficiently and securely, and their standards are widely adopted across the globe.\n\n### Context/Sources Used:\n1. IEEE: Developed Wireless LAN Standard in US\n2. ETSI (European Telecommunications Standards Institute): Developed telecommunications standard for Europe\n3. 3GPP (3rd Generation Partnership Project): Created Global standards for mobile communication systems and cellular systems (3G UMTS, 4G LTE, 5G NR) [Textbook]"
+      }
+    ],
+    "topic_scores": {},
+    "documents": [
+      {
+        "name": "Unit2_Part1.pdf",
+        "size": 770437
+      }
+    ],
+    "updated_at": "2026-04-21 15:36:51.946582"
+  },
+  "8beb7ffa-6743-467c-abce-41cc005c3606": {
+    "title": "New Chat",
+    "messages": [],
+    "topic_scores": {},
+    "documents": [],
+    "updated_at": "2026-04-21 15:35:58.261552"
   }
 }
