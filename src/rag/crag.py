@@ -1,8 +1,8 @@
 """
 Corrective RAG (CRAG) — Relevance Grader
 =========================================
-Uses Google Gemini (gemini-3.1-flash-lite) to evaluate each retrieved document
-against the user's question.  Documents that are graded "no" (not relevant)
+Uses Google Gemini to evaluate all retrieved documents in a single batch
+against the user's question. Documents that are graded as not relevant
 are silently discarded before the answer is generated.
 
 Two public helpers are exposed:
@@ -25,7 +25,7 @@ from src.core.config import GOOGLE_API_KEY
 # ── Gemini grader model (lightweight flash for speed) ────────────────────────
 def _get_grader_model() -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
+        model="gemini-2-flash-lite",
         google_api_key=GOOGLE_API_KEY,
         temperature=0,
         max_retries=2,
@@ -36,23 +36,21 @@ def _get_grader_model() -> ChatGoogleGenerativeAI:
 _GRADER_PROMPT = PromptTemplate(
     template="""You are a strict relevance grader for a Retrieval-Augmented Generation (RAG) pipeline.
 
-Your task: decide whether the retrieved DOCUMENT contains information that is
+Your task: decide which of the retrieved DOCUMENTS contain information that is
 useful for answering the USER QUESTION.
 
-Respond with ONLY a single word — either:
-  yes   → the document is relevant and useful
-  no    → the document is irrelevant or does not help answer the question
-
+Respond with ONLY a comma-separated list of the integer IDs of the relevant documents (e.g., 0, 2).
+If NONE of the documents are relevant, respond with the exact word "none".
 Do not explain. Do not add any other text.
 
 USER QUESTION:
 {question}
 
-RETRIEVED DOCUMENT:
-{document}
+RETRIEVED DOCUMENTS:
+{documents}
 
-Relevance verdict (yes/no):""",
-    input_variables=["question", "document"],
+Relevant document IDs:""",
+    input_variables=["question", "documents"],
 )
 
 _grader_chain = _GRADER_PROMPT | _get_grader_model() | StrOutputParser()
@@ -62,26 +60,41 @@ _grader_chain = _GRADER_PROMPT | _get_grader_model() | StrOutputParser()
 
 def grade_documents(question: str, docs: List[Document]) -> List[Document]:
     """
-    Grade each document for relevance to `question` using Gemini.
-    Returns the subset of docs rated 'yes'.
+    Grade all documents in a single batch for relevance to `question` using Gemini.
+    Returns the subset of docs rated relevant.
     """
-    relevant = []
-    for doc in docs:
-        try:
-            verdict = _grader_chain.invoke({
-                "question": question,
-                "document": doc.page_content,
-            }).strip().lower()
-            if verdict.startswith("yes"):
+    if not docs:
+        return []
+
+    formatted_docs = ""
+    for i, doc in enumerate(docs):
+        formatted_docs += f"--- Document ID: {i} ---\n{doc.page_content}\n\n"
+
+    try:
+        verdict = _grader_chain.invoke({
+            "question": question,
+            "documents": formatted_docs,
+        }).strip().lower()
+
+        if verdict == "none":
+            print(f"[CRAG] ❌ All docs graded IRRELEVANT — discarded.")
+            return []
+
+        import re
+        relevant_indices = set(int(idx) for idx in re.findall(r'\d+', verdict))
+
+        relevant = []
+        for i, doc in enumerate(docs):
+            if i in relevant_indices:
                 relevant.append(doc)
-                print(f"[CRAG] ✅ Doc graded RELEVANT (first 80 chars): {doc.page_content[:80]!r}")
+                print(f"[CRAG] ✅ Doc {i} graded RELEVANT (first 80 chars): {doc.page_content[:80]!r}")
             else:
-                print(f"[CRAG] ❌ Doc graded IRRELEVANT — discarded.")
-        except Exception as e:
-            # On grader error, be conservative: keep the doc
-            print(f"[CRAG] ⚠️  Grader error ({e}), keeping doc by default.")
-            relevant.append(doc)
-    return relevant
+                print(f"[CRAG] ❌ Doc {i} graded IRRELEVANT — discarded.")
+        return relevant
+    except Exception as e:
+        # On grader error, be conservative: keep all docs
+        print(f"[CRAG] ⚠️  Grader error ({e}), keeping all docs by default.")
+        return docs
 
 
 def build_crag_context(retriever, question: str) -> Tuple[str, str]:

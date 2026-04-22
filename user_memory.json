@@ -1,6 +1,5 @@
 {
   "items": [
-    "User responds in English only",
     "User prefers Java for coding"
   ],
   "chat_history": [
@@ -67,6 +66,22 @@
     {
       "role": "assistant",
       "content": "I've got it. When you say \"ELI5\", I'll explain things in a super simple way, as if you're 5 years old. I'll use easy-to-understand language and examples."
+    },
+    {
+      "role": "user",
+      "content": "I want my explanation in tamil"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll note that you'd like explanations in Tamil. However, I want to confirm that earlier you mentioned you'd like responses in English, and also previously in Hindi. To clarify, would you like me to prioritize Tamil or stick with one of the previously mentioned languages?"
+    },
+    {
+      "role": "user",
+      "content": "tamil"
+    },
+    {
+      "role": "assistant",
+      "content": "I've updated your preference to Tamil for explanations. I'll make sure to provide explanations in Tamil from now on."
     }
   ],
   "subjects": [

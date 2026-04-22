@@ -380,17 +380,16 @@ def get_user_stats():
     - total_questions: total number of quiz questions answered across all sessions.
     - average_mastery_pct: average EMA score (0-100) across all unique topics.
     """
-    data = tracker.load_all_sessions()
+    global_profile = tracker.load_global_profile()
     total_questions = 0
     all_ema_scores = []
 
-    for session in data.values():
-        for subj_topics in session.get("topic_scores", {}).values():
-            for stats in subj_topics.values():
-                total_questions += stats.get("total", 0)
-                score = stats.get("ema_score")
-                if score is not None:
-                    all_ema_scores.append(score)
+    for subj_topics in global_profile.values():
+        for stats in subj_topics.values():
+            total_questions += stats.get("total", 0)
+            score = stats.get("ema_score")
+            if score is not None:
+                all_ema_scores.append(score)
 
     avg_mastery = round((sum(all_ema_scores) / len(all_ema_scores)) * 100, 1) if all_ema_scores else 0.0
 

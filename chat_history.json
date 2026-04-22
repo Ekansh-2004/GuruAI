@@ -335,7 +335,7 @@
         "Data Fudiciary": {
           "correct": 0,
           "total": 1,
-          "ema_score": 0.1
+          "ema_score": 0.9
         },
         "Data Principal": {
           "correct": 0,
@@ -423,6 +423,14 @@
       {
         "role": "assistant",
         "content": "[ADAPTIVITY TRIGGERED: AVERAGE TOPIC]\nRegulatory bodies play a crucial role in shaping the standards for Vehicular Ad-hoc Networks (VANETs). There are three key regulatory bodies that have developed standards for VANETs. \n\nFirstly, the IEEE has developed the Wireless LAN Standard in the US, which provides a framework for wireless communication in VANETs. \n\nSecondly, the ETSI (European Telecommunications Standards Institute) has developed telecommunications standards for Europe, ensuring that VANETs in Europe adhere to specific guidelines.\n\nLastly, the 3GPP (3rd Generation Partnership Project) has created global standards for mobile communication systems and cellular systems, including 3G UMTS, 4G LTE, and 5G NR, which are essential for the development of VANETs.\n\nThese regulatory bodies work together to ensure that VANETs operate efficiently and securely, and their standards are widely adopted across the globe.\n\n### Context/Sources Used:\n1. IEEE: Developed Wireless LAN Standard in US\n2. ETSI (European Telecommunications Standards Institute): Developed telecommunications standard for Europe\n3. 3GPP (3rd Generation Partnership Project): Created Global standards for mobile communication systems and cellular systems (3G UMTS, 4G LTE, 5G NR) [Textbook]"
+      },
+      {
+        "role": "user",
+        "content": "What do you mean by QUIC"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: WEAK TOPIC]\nQUIC stands for Quick UDP Internet Connections. It's a transport layer network protocol designed to improve the performance of web traffic. Imagine you're having a conversation with someone, and you want to make sure your messages get delivered quickly and efficiently. \n\nIn the same way, QUIC helps devices on the internet communicate with each other faster and more reliably. It was developed by Google and is used by many popular websites and services. QUIC aims to reduce latency, packet loss, and connection establishment time, making it a faster and more efficient alternative to traditional protocols like TCP.\n\nOne way to think about it is to consider how you would send a package to someone. You would want to make sure it gets delivered quickly, securely, and without getting lost. QUIC works in a similar way, ensuring that data packets are delivered quickly and efficiently over the internet.\n\n### Context/Sources Used:\nGeneral Knowledge used. No relevant information found in the provided textbook documents."
       }
     ],
     "topic_scores": {},
@@ -432,13 +440,451 @@
         "size": 770437
       }
     ],
-    "updated_at": "2026-04-21 15:36:51.946582"
+    "updated_at": "2026-04-21 20:46:35.710112"
   },
   "8beb7ffa-6743-467c-abce-41cc005c3606": {
-    "title": "New Chat",
-    "messages": [],
+    "title": "What is Data Fudiciary",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is Data Fudiciary"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: STRONG TOPIC] \nA Data Fiduciary refers to an entity that handles and processes personal data. This entity is responsible for ensuring the completeness, accuracy, and consistency of the personal data, especially when it is likely to be used to make decisions that affect the Data Principal or when it is to be disclosed to another Data Fiduciary. The Data Fiduciary must also implement appropriate technical and organizational measures to protect the personal data. Furthermore, they are required to provide a summary of the personal data being processed and the processing activities, as well as the identities of other Data Fiduciaries and Data Processors involved. They must also establish a mechanism for redressing grievances of Data Principals.\n\n### Context/Sources Used:\n[Textbook] data, upon making to it a request in such manner as may be prescribed,\u2014\n(a) a summary of personal data which is being processed by such Data Fiduciary\nand the processing activities undertaken by that Data Fiduciary with respect to such\npersonal data;\n(3) Where personal data processed by a Data Fiduciary is likely to be\u2014\n(a) used to make a decision that affects the Data Principal; or\n(b) disclosed to another Data Fiduciary,\nthe Data Fiduciary processing such personal data shall ensure its completeness,\naccuracy and consistency.\n(4) A Data Fiduciary shall implement appropriate technical and organisational measures"
+      },
+      {
+        "role": "user",
+        "content": "What are duties of signifacnt data fudiciary"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: STRONG TOPIC] \nThe duties of a Significant Data Fiduciary are centered around transparency, accountability, and protection of personal data. Firstly, they must provide a notice to the Data Principal, informing them about the personal data being processed, the purpose of such processing, and the rights of the Data Principal under the Act. This notice should also include information on how the Data Principal can exercise their rights and make a complaint to the Board.\n\nAdditionally, a Significant Data Fiduciary must ensure compliance with the provisions of the Act and the rules made thereunder, in respect of any processing undertaken by it or on its behalf by a Data Processor. This includes ensuring that any Data Processor engaged by the Significant Data Fiduciary is appointed under a valid contract, which is limited to activities related to offering goods or services to Data Principals.\n\n### Context/Sources Used:\n[Textbook] accompanied or preceded by a notice given by the Data Fiduciary to the Data Principal,\ninforming her,\u2014\n  (i) the personal data and the purpose for which the same is proposed to be\nprocessed;\n  (ii) the manner in which she may exercise her rights under sub-section (4) of\nsection 6 and section 13; and\n (iii) the manner in which the Data Principal may make a complaint to the Board,\nwith the provisions of this Act and the rules made thereunder in respect of any processing\nundertaken by it or on its behalf by a Data Processor.\n(2) A Data Fiduciary may engage, appoint, use or otherwise involve a Data Processor\nto process personal data on its behalf for any activity related to offering of goods or\nservices to Data Principals only under a valid contract."
+      },
+      {
+        "role": "user",
+        "content": "Who is a Consent Manager"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: WEAK TOPIC] \nImagine you're at a store, and you want to choose what kind of newsletters you want to receive from them. A Consent Manager is like a helper who makes it easy for you to decide what you want to share and what you don't. They are like a single point of contact that helps you manage your choices.\n\nThink of it like a special person who helps you keep track of what you've agreed to share and what you haven't. They make sure it's easy for you to change your mind or withdraw your consent if you want to. This person is registered with a special group called the Board, which makes sure they follow the rules.\n\n### Context/Sources Used:\n[Textbook] (g) \u201cConsent Manager\u201d means a person registered with the Board, who acts as a single point of contact to enable a Data Principal to give, manage, review and withdraw her consent through an accessible, transparent and interoperable platform;"
+      },
+      {
+        "role": "quiz",
+        "content": {
+          "questions": [
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Fiduciary",
+              "question": "What is the obligation of a Data Fiduciary when processing personal data of a Data Principal?",
+              "options": [
+                "To prove that a notice was given to the Data Principal",
+                "To prove that consent was given by the Data Principal",
+                "To process personal data without notice or consent",
+                "To disclose personal data to a third party"
+              ],
+              "correct_index": 0,
+              "explanation": "The Data Fiduciary shall be obliged to prove that a notice was given by her to the Data Principal and consent was given by such Data Principal to the Data Fiduciary in accordance with the provisions of this Act and the rules made thereunder."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Principal",
+              "question": "What right does a Data Principal have regarding their personal data?",
+              "options": [
+                "Right to correction, completion, updating and erasure",
+                "Right to access the contents of their personal data",
+                "Right to nominate a representative",
+                "Right to grievance redressal"
+              ],
+              "correct_index": 0,
+              "explanation": "A Data Principal shall have the right to correction, completion, updating and erasure of their personal data."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Transfer",
+              "question": "Can a Data Fiduciary transfer personal data outside India?",
+              "options": [
+                "Yes, without any restrictions",
+                "No, it is completely restricted",
+                "Yes, with the permission of the Central Government",
+                "Yes, but with certain restrictions"
+              ],
+              "correct_index": 3,
+              "explanation": "Nothing contained in this section shall restrict the applicability of any law for the time being in force in India that provides for a higher degree of protection for or restriction on transfer of personal data by a Data Fiduciary outside India."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Schedule Amendment",
+              "question": "Can the Central Government amend the Schedule?",
+              "options": [
+                "Yes, without any restrictions",
+                "No, it cannot be amended",
+                "Yes, but only with the permission of the Board",
+                "Yes, by notification, subject to certain restrictions"
+              ],
+              "correct_index": 3,
+              "explanation": "The Central Government may, by notification, amend the Schedule, subject to the restriction that no such notification shall have the effect of increasing any penalty."
+            }
+          ]
+        }
+      },
+      {
+        "role": "quiz",
+        "content": {
+          "questions": [
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Fiduciary",
+              "question": "Who shall respond to any grievances referred to in sub-section (1) within such period as may be prescribed from the date of its receipt for all or any class of Data Fiduciaries?",
+              "options": [
+                "The Data Principal",
+                "The Data Fiduciary or Consent Manager",
+                "The Central Government",
+                "The Board"
+              ],
+              "correct_index": 1,
+              "explanation": "According to the text, The Data Fiduciary or Consent Manager shall respond to any grievances referred to in sub-section (1) within such period as may be prescribed from the date of its receipt for all or any class of Data Fiduciaries."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Principal",
+              "question": "What is the right of the Data Principal regarding withdrawal of consent?",
+              "options": [
+                "The Data Principal shall not have the right to withdraw her consent at any time",
+                "The Data Principal shall have the right to withdraw her consent at any time, with the ease of doing so being comparable to the ease with which such consent was given",
+                "The Data Principal shall have the right to withdraw her consent only after a specified period",
+                "The Data Principal shall have the right to withdraw her consent only with the approval of the Data Fiduciary"
+              ],
+              "correct_index": 1,
+              "explanation": "According to the text, the Data Principal shall have the right to withdraw her consent at any time, with the ease of doing so being comparable to the ease with which such consent was given"
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Appellate Tribunal",
+              "question": "Which of the following is an Appellate Tribunal under the Digital Personal Data Protection Act, 2023?",
+              "options": [
+                "The Appellate Tribunal under the Information Technology Act, 2000",
+                "The Appellate Tribunal under the Airports Economic Regulatory Authority of India Act, 2008",
+                "The Appellate Tribunal under the Digital Personal Data Protection Act, 2023",
+                "None of the above"
+              ],
+              "correct_index": 2,
+              "explanation": "According to the text, the Appellate Tribunal under the Digital Personal Data Protection Act, 2023 is mentioned as one of the Appellate Tribunals"
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Personal Data",
+              "question": "What is the condition for personal data not to be applied to, as per the given text?",
+              "options": [
+                "Personal data processed by an individual for any personal or domestic purpose",
+                "Personal data that is made or caused to be made publicly available by the Data Principal",
+                "Personal data that is processed by a Data Fiduciary for a commercial purpose",
+                "Personal data that is transferred to another country"
+              ],
+              "correct_index": 0,
+              "explanation": "According to the text, personal data processed by an individual for any personal or domestic purpose is one of the conditions for personal data not to be applied to"
+            }
+          ]
+        }
+      },
+      {
+        "role": "user",
+        "content": "What is consent manager"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: WEAK TOPIC] \n\u0b92\u0bb0\u0bc1 \u0b9a\u0bae\u0bcd\u0bae\u0ba4 \u0bae\u0bc7\u0bb2\u0bbe\u0bb3\u0bb0\u0bcd (Consent Manager) \u0b8e\u0ba9\u0bcd\u0baa\u0bb5\u0bb0\u0bcd \u0b92\u0bb0\u0bc1 \u0ba4\u0ba9\u0bbf\u0ba8\u0baa\u0bb0\u0bcd \u0b86\u0bb5\u0bbe\u0bb0\u0bcd, \u0b85\u0bb5\u0bb0\u0bcd \u0ba4\u0ba9\u0bbf\u0ba8\u0baa\u0bb0\u0bcd\u0b95\u0bb3\u0bbf\u0ba9\u0bcd \u0b9a\u0bae\u0bcd\u0bae\u0ba4\u0ba4\u0bcd\u0ba4\u0bc8 \u0bae\u0bc7\u0bb2\u0bbe\u0bb3\u0bcd\u0bb5\u0ba4\u0bb1\u0bcd\u0b95\u0bc1\u0bae\u0bcd, \u0bae\u0bc0\u0bb3\u0bcd\u0baa\u0bbe\u0bb0\u0bcd\u0bb5\u0bc8\u0baf\u0bbf\u0b9f\u0bc1\u0bb5\u0ba4\u0bb1\u0bcd\u0b95\u0bc1\u0bae\u0bcd, \u0ba4\u0bbf\u0bb0\u0bc1\u0bae\u0bcd\u0baa\u0baa\u0bcd \u0baa\u0bc6\u0bb1\u0bc1\u0bb5\u0ba4\u0bb1\u0bcd\u0b95\u0bc1\u0bae\u0bcd \u0b92\u0bb0\u0bc1 \u0b8e\u0bb3\u0bbf\u0ba4\u0bbe\u0ba9, \u0baa\u0bc1\u0bb2\u0baa\u0bcd\u0baa\u0b9f\u0bc1\u0bae\u0bcd \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0b87\u0ba3\u0bc8\u0b95\u0bcd\u0b95\u0b95\u0bcd\u0b95\u0bc2\u0b9f\u0bbf\u0baf \u0ba4\u0bb3\u0ba4\u0bcd\u0ba4\u0bc8 \u0bb5\u0bb4\u0b99\u0bcd\u0b95\u0bc1\u0b95\u0bbf\u0bb1\u0bbe\u0bb0\u0bcd. \u0b87\u0bb5\u0bb0\u0bcd \u0bb5\u0bbe\u0bb0\u0bbf\u0baf\u0ba4\u0bcd\u0ba4\u0bbf\u0bb2\u0bcd \u0baa\u0ba4\u0bbf\u0bb5\u0bc1 \u0b9a\u0bc6\u0baf\u0bcd\u0baf\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f\u0bbf\u0bb0\u0bc1\u0baa\u0bcd\u0baa\u0bbe\u0bb0\u0bcd.\n\n\u0b87\u0ba4\u0bc1 \u0baa\u0bcb\u0ba9\u0bcd\u0bb1 \u0b92\u0bb0\u0bc1 \u0b9a\u0bae\u0bcd\u0bae\u0ba4 \u0bae\u0bc7\u0bb2\u0bbe\u0bb3\u0bb0\u0bcd \u0ba4\u0ba9\u0bbf\u0ba8\u0baa\u0bb0\u0bcd\u0b95\u0bb3\u0bbf\u0ba9\u0bcd \u0ba4\u0ba9\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f \u0ba4\u0b95\u0bb5\u0bb2\u0bcd\u0b95\u0bb3\u0bc8 \u0b8e\u0bb5\u0bcd\u0bb5\u0bbe\u0bb1\u0bc1 \u0b95\u0bc8\u0baf\u0bbe\u0bb3\u0bc1\u0bb5\u0ba4\u0bc1, \u0b8e\u0baa\u0bcd\u0baa\u0b9f\u0bbf \u0b85\u0bb5\u0bb0\u0bcd\u0b95\u0bb3\u0bbf\u0ba9\u0bcd \u0b9a\u0bae\u0bcd\u0bae\u0ba4\u0ba4\u0bcd\u0ba4\u0bc8\u0baa\u0bcd \u0baa\u0bc6\u0bb1\u0bc1\u0bb5\u0ba4\u0bc1, \u0bae\u0bb1\u0bcd\u0bb1\u0bc1\u0bae\u0bcd \u0b8e\u0bb5\u0bcd\u0bb5\u0bbe\u0bb1\u0bc1 \u0b85\u0bb5\u0bb0\u0bcd\u0b95\u0bb3\u0bbf\u0ba9\u0bcd \u0ba4\u0ba9\u0bbf\u0baa\u0bcd\u0baa\u0b9f\u0bcd\u0b9f \u0ba4\u0b95\u0bb5\u0bb2\u0bcd\u0b95\u0bb3\u0bc8\u0baa\u0bcd \u0baa\u0bbe\u0ba4\u0bc1\u0b95\u0bbe\u0baa\u0bcd\u0baa\u0ba4\u0bc1 \u0b8e\u0ba9\u0bcd\u0baa\u0ba4\u0bc8 \u0b89\u0bb1\u0bc1\u0ba4\u0bbf \u0b9a\u0bc6\u0baf\u0bcd\u0b95\u0bbf\u0bb1\u0bbe\u0bb0\u0bcd.\n\n### Context/Sources Used:\n[Textbook] (g) \u201cConsent Manager\u201d means a person registered with the Board, who acts as a single point of contact to enable a Data Principal to give, manage, review and withdraw her consent through an accessible, transparent and interoperable platform;"
+      }
+    ],
+    "topic_scores": {
+      "It Act And Data Protection": {
+        "Data Fiduciary": {
+          "correct": 1,
+          "total": 1,
+          "ema_score": 0.3
+        },
+        "Data Principal": {
+          "correct": 1,
+          "total": 1,
+          "ema_score": 0.3
+        },
+        "Data Transfer": {
+          "correct": 0,
+          "total": 1,
+          "ema_score": 0.0
+        },
+        "Schedule Amendment": {
+          "correct": 1,
+          "total": 1,
+          "ema_score": 0.3
+        }
+      }
+    },
+    "documents": [
+      {
+        "name": "DPDP Act.pdf",
+        "size": 552472
+      }
+    ],
+    "updated_at": "2026-04-22 01:30:58.898074",
+    "quiz": {
+      "questions": [
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Data Fiduciary",
+          "question": "Who shall respond to any grievances referred to in sub-section (1) within such period as may be prescribed from the date of its receipt for all or any class of Data Fiduciaries?",
+          "options": [
+            "The Data Principal",
+            "The Data Fiduciary or Consent Manager",
+            "The Central Government",
+            "The Board"
+          ],
+          "correct_index": 1,
+          "explanation": "According to the text, The Data Fiduciary or Consent Manager shall respond to any grievances referred to in sub-section (1) within such period as may be prescribed from the date of its receipt for all or any class of Data Fiduciaries."
+        },
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Data Principal",
+          "question": "What is the right of the Data Principal regarding withdrawal of consent?",
+          "options": [
+            "The Data Principal shall not have the right to withdraw her consent at any time",
+            "The Data Principal shall have the right to withdraw her consent at any time, with the ease of doing so being comparable to the ease with which such consent was given",
+            "The Data Principal shall have the right to withdraw her consent only after a specified period",
+            "The Data Principal shall have the right to withdraw her consent only with the approval of the Data Fiduciary"
+          ],
+          "correct_index": 1,
+          "explanation": "According to the text, the Data Principal shall have the right to withdraw her consent at any time, with the ease of doing so being comparable to the ease with which such consent was given"
+        },
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Appellate Tribunal",
+          "question": "Which of the following is an Appellate Tribunal under the Digital Personal Data Protection Act, 2023?",
+          "options": [
+            "The Appellate Tribunal under the Information Technology Act, 2000",
+            "The Appellate Tribunal under the Airports Economic Regulatory Authority of India Act, 2008",
+            "The Appellate Tribunal under the Digital Personal Data Protection Act, 2023",
+            "None of the above"
+          ],
+          "correct_index": 2,
+          "explanation": "According to the text, the Appellate Tribunal under the Digital Personal Data Protection Act, 2023 is mentioned as one of the Appellate Tribunals"
+        },
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Personal Data",
+          "question": "What is the condition for personal data not to be applied to, as per the given text?",
+          "options": [
+            "Personal data processed by an individual for any personal or domestic purpose",
+            "Personal data that is made or caused to be made publicly available by the Data Principal",
+            "Personal data that is processed by a Data Fiduciary for a commercial purpose",
+            "Personal data that is transferred to another country"
+          ],
+          "correct_index": 0,
+          "explanation": "According to the text, personal data processed by an individual for any personal or domestic purpose is one of the conditions for personal data not to be applied to"
+        }
+      ]
+    }
+  },
+  "c77ddce4-6f59-49e3-880f-a548cf7dd42c": {
+    "title": "What is data fudiciary",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What is data fudiciary"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: WEAK TOPIC] \n\nImagine you have a lot of toys, and you want someone to take care of them for you. This person is like a \"data fiduciary\". They are in charge of making sure your toys are safe and used correctly. In the same way, a data fiduciary is a person or company that is responsible for taking care of someone's personal data. They decide how the data is used and make sure it is kept safe. \n\nThink of it like a big responsibility, where this person or company has to make sure they are using the data for the right reasons and not sharing it with anyone they shouldn't. They have to follow rules to keep the data safe, just like you would want someone to take good care of your toys.\n\n### Context/Sources Used:\n(i) Data Fiduciary: The entity (company or person) that decides why and how data is processed. They carry the most legal responsibility. [Textbook]"
+      },
+      {
+        "role": "user",
+        "content": "What is the role of consent manager"
+      },
+      {
+        "role": "assistant",
+        "content": "[ADAPTIVITY TRIGGERED: WEAK TOPIC] \n\nImagine you have a lot of different accounts on various websites and apps. Each of these accounts asks for your permission to use your personal data in some way. It can get really confusing to keep track of what you've agreed to and what you haven't. That's where a Consent Manager comes in. \n\nA Consent Manager is like a helper who makes it easy for you to control what happens to your personal data. They act as a single point of contact, so instead of having to go to each website or app individually to manage your permissions, you can just go to the Consent Manager. \n\nTheir main job is to help you give, review, manage, or even withdraw the permissions you've given to different apps and websites. They work for you, not the companies, which means they are supposed to look out for your best interests and make sure your data is being used correctly. \n\nTo make sure they're doing their job properly, every Consent Manager has to register with the Data Protection Board and meet certain standards. This way, you can trust that they're handling your data responsibly.\n\n### Context/Sources Used:\n[Textbook] \n- The law introduces a new role called a Consent Manager.\n- They act as a single point of contact for you to give, review, manage, or withdraw all your consents across different apps and websites.\n- Accountability: They work for you, not the companies. They are legally accountable to you and must act on your behalf.\n- Registration: Every Consent Manager must be registered with the Data Protection Board and meet specific technical and financial standards."
+      },
+      {
+        "role": "quiz",
+        "content": {
+          "questions": [
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Retention",
+              "question": "When should a company delete personal data?",
+              "options": [
+                "When the data is no longer needed",
+                "When the data is kept forever",
+                "When the company decides to",
+                "When the data processor requests it"
+              ],
+              "correct_index": 0,
+              "explanation": "According to the text, data should not be kept forever and a company must delete personal data when it is no longer needed."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Lawful Purpose",
+              "question": "What is a lawful purpose for processing data?",
+              "options": [
+                "Anything specifically forbidden by law",
+                "Anything not specifically forbidden by law",
+                "Only for tax or audit purposes",
+                "Only with parental consent"
+              ],
+              "correct_index": 1,
+              "explanation": "The text defines a lawful purpose as anything that is not specifically forbidden by law."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Verifiable Consent",
+              "question": "What is required before a company can process a child's data?",
+              "options": [
+                "Verifiable consent from the parent or legal guardian",
+                "Consent from the child themselves",
+                "No consent is required",
+                "Consent from a third party"
+              ],
+              "correct_index": 0,
+              "explanation": "According to the text, before a company can touch any data belonging to a child, they must get permission from the parent or legal guardian."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Fiduciary",
+              "question": "What is a Significant Data Fiduciary?",
+              "options": [
+                "A company that processes personal data without consent",
+                "A company that adopts 'Privacy by Design'",
+                "A special category of companies identified by the law",
+                "A company that only processes data for tax or audit purposes"
+              ],
+              "correct_index": 2,
+              "explanation": "The text identifies a Significant Data Fiduciary as a special category of companies called out by the law."
+            }
+          ]
+        }
+      },
+      {
+        "role": "quiz",
+        "content": {
+          "questions": [
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Data Protection",
+              "question": "What must companies do to enforce the law?",
+              "options": [
+                "Promise to follow the law",
+                "Build systems that enforce the law",
+                "Ignore the law",
+                "Follow the law sometimes"
+              ],
+              "correct_index": 1,
+              "explanation": "Companies must build systems that enforce the law, not just promise to follow it."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Public Data",
+              "question": "When is personal data considered public?",
+              "options": [
+                "When it is shared with friends",
+                "When it is made available to the public by the data principal",
+                "When it is shared with family",
+                "When it is sold to a company"
+              ],
+              "correct_index": 1,
+              "explanation": "Personal data is considered public when it is made available to the public by the data principal, such as through a public post on social media."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Notice Requirement",
+              "question": "What must a company provide before asking for permission to use personal data?",
+              "options": [
+                "A clear notice",
+                "A vague notice",
+                "No notice",
+                "A notice after using the data"
+              ],
+              "correct_index": 0,
+              "explanation": "A company must provide a clear notice before asking for permission to use personal data, which acts like a 'data receipt' that tells the user what is happening."
+            },
+            {
+              "subject": "It Act And Data Protection",
+              "topic": "Consent Manager",
+              "question": "What is the principle of necessity in relation to consent?",
+              "options": [
+                "Consenting to everything",
+                "Consenting to only what is necessary",
+                "Not consenting at all",
+                "Consenting to whatever the company wants"
+              ],
+              "correct_index": 1,
+              "explanation": "The principle of necessity states that users should only consent to what is strictly necessary for the service, and not to any additional information that is not required."
+            }
+          ]
+        }
+      }
+    ],
     "topic_scores": {},
-    "documents": [],
-    "updated_at": "2026-04-21 15:35:58.261552"
+    "documents": [
+      {
+        "name": "Digital Personal Data Protection 2023.pdf",
+        "size": 281800
+      }
+    ],
+    "updated_at": "2026-04-22 01:01:51.968947",
+    "quiz": {
+      "questions": [
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Data Protection",
+          "question": "What must companies do to enforce the law?",
+          "options": [
+            "Promise to follow the law",
+            "Build systems that enforce the law",
+            "Ignore the law",
+            "Follow the law sometimes"
+          ],
+          "correct_index": 1,
+          "explanation": "Companies must build systems that enforce the law, not just promise to follow it."
+        },
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Public Data",
+          "question": "When is personal data considered public?",
+          "options": [
+            "When it is shared with friends",
+            "When it is made available to the public by the data principal",
+            "When it is shared with family",
+            "When it is sold to a company"
+          ],
+          "correct_index": 1,
+          "explanation": "Personal data is considered public when it is made available to the public by the data principal, such as through a public post on social media."
+        },
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Notice Requirement",
+          "question": "What must a company provide before asking for permission to use personal data?",
+          "options": [
+            "A clear notice",
+            "A vague notice",
+            "No notice",
+            "A notice after using the data"
+          ],
+          "correct_index": 0,
+          "explanation": "A company must provide a clear notice before asking for permission to use personal data, which acts like a 'data receipt' that tells the user what is happening."
+        },
+        {
+          "subject": "It Act And Data Protection",
+          "topic": "Consent Manager",
+          "question": "What is the principle of necessity in relation to consent?",
+          "options": [
+            "Consenting to everything",
+            "Consenting to only what is necessary",
+            "Not consenting at all",
+            "Consenting to whatever the company wants"
+          ],
+          "correct_index": 1,
+          "explanation": "The principle of necessity states that users should only consent to what is strictly necessary for the service, and not to any additional information that is not required."
+        }
+      ]
+    }
   }
 }

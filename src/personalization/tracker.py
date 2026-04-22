@@ -119,26 +119,68 @@ def get_quiz(session_id: str) -> dict:
 # A single correct answer from 0% only raises score to 30%, not 100%.
 _EMA_ALPHA = 0.3
 
-def update_topic_performance(session_id: str, subject: str, topic: str, correct: bool):
-    """Record quiz performance and update the EMA score for the topic."""
+PROFILE_FILE = "knowledge_profile.json"
+
+def load_global_profile() -> Dict:
+    """Load the globally aggregated knowledge profile."""
+    if os.path.exists(PROFILE_FILE):
+        try:
+            with open(PROFILE_FILE, "r") as f:
+                return json.load(f)
+        except:
+            pass
+    
+    # Run a one-time migration if profile doesn't exist but history does
     data = load_all_sessions()
-    if session_id not in data:
-        return
-        
-    session_data = data[session_id]
-    if "topic_scores" not in session_data:
-        session_data["topic_scores"] = {}
+    global_subjects = {}
+    for sid, session in data.items():
+        session_scores = session.get("topic_scores", {})
+        for subj, topics in session_scores.items():
+            s_key = subj.title().strip()
+            if s_key not in global_subjects:
+                global_subjects[s_key] = {}
+            for t, stats in topics.items():
+                t_key = t.title().strip()
+                if t_key not in global_subjects[s_key]:
+                    global_subjects[s_key][t_key] = {"correct": 0, "total": 0, "ema_score": None}
+                global_subjects[s_key][t_key]["correct"] += stats.get("correct", 0)
+                global_subjects[s_key][t_key]["total"] += stats.get("total", 0)
+                session_ema = stats.get("ema_score")
+                if session_ema is not None:
+                    g = global_subjects[s_key][t_key]["ema_score"]
+                    if g is None:
+                        global_subjects[s_key][t_key]["ema_score"] = session_ema
+                    else:
+                        global_subjects[s_key][t_key]["ema_score"] = (session_ema * _EMA_ALPHA) + (g * (1 - _EMA_ALPHA))
+    
+    save_global_profile(global_subjects)
+    return global_subjects
+
+def save_global_profile(data: Dict):
+    with open(PROFILE_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+def update_topic_performance(session_id: str, subject: str, topic: str, correct: bool):
+    """Record quiz performance and update the EMA score for the topic globally."""
+    data = load_global_profile()
         
     subj = subject.title().strip()
-    if subj not in session_data["topic_scores"]:
-        session_data["topic_scores"][subj] = {}
+    if subj not in data:
+        data[subj] = {}
         
     t = topic.title().strip()
-    if t not in session_data["topic_scores"][subj]:
+    
+    import difflib
+    existing_topics = list(data[subj].keys())
+    matches = difflib.get_close_matches(t, existing_topics, n=1, cutoff=0.85)
+    if matches:
+        t = matches[0]
+
+    if t not in data[subj]:
         # First attempt — no prior history, seed EMA with the first result directly
-        session_data["topic_scores"][subj][t] = {"correct": 0, "total": 0, "ema_score": None}
+        data[subj][t] = {"correct": 0, "total": 0, "ema_score": None}
         
-    entry = session_data["topic_scores"][subj][t]
+    entry = data[subj][t]
     entry["total"] += 1
     if correct:
         entry["correct"] += 1
@@ -146,37 +188,13 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
     recent = 1.0 if correct else 0.0
     prev = entry["ema_score"] if entry["ema_score"] is not None else 0.0
     # EMA formula: NewScore = (recent × α) + (previous × (1 − α))
-    # Starting from a neutral 0.0 baseline means a first correct answer = 0.30, NOT 1.0.
     entry["ema_score"] = (recent * _EMA_ALPHA) + (prev * (1 - _EMA_ALPHA))
         
-    save_all_sessions(data)
+    save_global_profile(data)
 
 def get_performance_areas():
-    """Aggregates all topic scores from all active sessions, classifying them dynamically into weak, average, and strong by subject."""
-    data = load_all_sessions()
-    global_subjects = {}
-    
-    # Aggregate from all valid sessions
-    for sid, session in data.items():
-        session_scores = session.get("topic_scores", {})
-        for subj, topics in session_scores.items():
-            if subj not in global_subjects:
-                global_subjects[subj] = {}
-            for t, stats in topics.items():
-                if t not in global_subjects[subj]:
-                    global_subjects[subj][t] = {"correct": 0, "total": 0, "ema_score": None}
-                global_subjects[subj][t]["correct"] += stats["correct"]
-                global_subjects[subj][t]["total"] += stats["total"]
-                # EMA: chain the per-session EMA score using the same alpha.
-                # For aggregation across sessions, we treat each session's final EMA
-                # as a new "observation" and run the global EMA on top of it.
-                session_ema = stats.get("ema_score")
-                if session_ema is not None:
-                    if global_subjects[subj][t]["ema_score"] is None:
-                        global_subjects[subj][t]["ema_score"] = session_ema
-                    else:
-                        g = global_subjects[subj][t]["ema_score"]
-                        global_subjects[subj][t]["ema_score"] = (session_ema * _EMA_ALPHA) + (g * (1 - _EMA_ALPHA))
+    """Returns the globally tracked topics classified into weak, average, and strong."""
+    global_subjects = load_global_profile()
     
     result = {}
     for subj, topics in global_subjects.items():
@@ -201,18 +219,18 @@ def get_performance_areas():
     return result
 
 def delete_topic(subject: str, topic: str):
-    """Remove a topic's score data from ALL sessions, erasing it from the global knowledge profile."""
-    data = load_all_sessions()
+    """Remove a topic's score data from the global knowledge profile."""
+    data = load_global_profile()
     subj_key = subject.title().strip()
     topic_key = topic.title().strip()
     changed = False
-    for sid, session in data.items():
-        scores = session.get("topic_scores", {})
-        if subj_key in scores and topic_key in scores[subj_key]:
-            del scores[subj_key][topic_key]
-            # Clean up empty subject entry
-            if not scores[subj_key]:
-                del scores[subj_key]
-            changed = True
+
+    if subj_key in data and topic_key in data[subj_key]:
+        del data[subj_key][topic_key]
+        # Clean up empty subject entry
+        if not data[subj_key]:
+            del data[subj_key]
+        changed = True
+
     if changed:
-        save_all_sessions(data)
+        save_global_profile(data)
