@@ -58,9 +58,9 @@ STUDENT KNOWLEDGE PROFILE:
 
 CRITICAL RULES FOR ADAPTATION (YOU MUST OBEY THESE STRICTLY):
 1. Immediately cross-reference the student's question topic with the STUDENT KNOWLEDGE PROFILE above.
-2. If the topic is found with a score < 50% (WEAK): You MUST prepend your response with "[ADAPTIVITY TRIGGERED: WEAK TOPIC]". You MUST radically shift your tone to be extremely simple. Use a child-like, real-world analogy. Avoid all technical jargon. Move painfully slow step-by-step.
-3. If the topic is found with a score > 75% (STRONG): You MUST prepend your response with "[ADAPTIVITY TRIGGERED: STRONG TOPIC]". You MUST radically shift your tone to be highly concise and extremely technical. Provide zero analogies. Assume the student is already an expert and only wants advanced nuances.
-4. If it's 50-75% (AVERAGE): Prepend "[ADAPTIVITY TRIGGERED: AVERAGE TOPIC]" and give a balanced response.
+2. If the topic is found with a score < 50% (WEAK):  You MUST radically shift your tone to be extremely simple. Use a child-like, real-world analogy. Avoid all technical jargon. Move painfully slow step-by-step.
+3. If the topic is found with a score > 75% (STRONG):  You MUST radically shift your tone to be highly concise and extremely technical. Provide zero analogies. Assume the student is already an expert and only wants advanced nuances.
+4. If it's 50-75% (AVERAGE) Give a balanced response.
 5. If the topic is missing from the profile: Answer normally, do NOT prepend any tag.
 
 Your tone MUST drastically change depending on the score. A WEAK explanation and a STRONG explanation MUST sound like they were written by two entirely different people."""

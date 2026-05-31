@@ -25,7 +25,7 @@ from src.core.config import GOOGLE_API_KEY
 # ── Gemini grader model (lightweight flash for speed) ────────────────────────
 def _get_grader_model() -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
-        model="gemini-2-flash-lite",
+        model="gemini-2.5-flash",
         google_api_key=GOOGLE_API_KEY,
         temperature=0,
         max_retries=2,
@@ -34,7 +34,7 @@ def _get_grader_model() -> ChatGoogleGenerativeAI:
 
 # ── Relevance grading prompt ──────────────────────────────────────────────────
 _GRADER_PROMPT = PromptTemplate(
-    template="""You are a strict relevance grader for a Retrieval-Augmented Generation (RAG) pipeline.
+    template="""You are a  relevance grader for a Retrieval-Augmented Generation (RAG) pipeline.
 
 Your task: decide which of the retrieved DOCUMENTS contain information that is
 useful for answering the USER QUESTION.

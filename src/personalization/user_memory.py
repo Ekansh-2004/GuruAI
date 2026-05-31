@@ -1,5 +1,5 @@
 """
-User Memory — persistent cross-session preferences and facts about the student.
+User Memory — persistent cross-session preferences and facts about the student, stored in SQLite.
 
 Two responsibilities:
 1. Storage + LLM extraction of user preferences (injected into all study sessions)
@@ -7,8 +7,8 @@ Two responsibilities:
    and responds warmly while silently extracting and persisting preferences.
 """
 
-import json
 import os
+import json
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
@@ -16,94 +16,112 @@ from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 from typing import List
 from src.core.config import GROQ_API_KEY
+from src.core.database import get_db
 
-MEMORY_FILE = "user_memory.json"
+# ── Storage ──
 
+def load_memory(user_id: int) -> list[str]:
+    """Load the preferences/memories list for a user from SQLite."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT memory_item FROM user_memories WHERE user_id = ? ORDER BY id ASC", 
+        (user_id,)
+    )
+    return [r["memory_item"] for r in cur.fetchall()]
 
-# ── Storage ───────────────────────────────────────────────────────────────────
+def save_memory(user_id: int, items: list[str]):
+    """Overwrite the preferences/memories list for a user in SQLite."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM user_memories WHERE user_id = ?", (user_id,))
+        for item in items:
+            if item and item.strip():
+                conn.execute(
+                    "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
+                    (user_id, item.strip())
+                )
+        conn.commit()
 
-def _load_data() -> dict:
-    if not os.path.exists(MEMORY_FILE):
-        return {"items": [], "chat_history": []}
-    with open(MEMORY_FILE, "r") as f:
-        return json.load(f)
-
-
-def _save_data(data: dict):
-    with open(MEMORY_FILE, "w") as f:
-        json.dump(data, f, indent=2)
-
-
-def load_memory() -> list[str]:
-    return _load_data().get("items", [])
-
-
-def save_memory(items: list[str]):
-    data = _load_data()
-    data["items"] = items
-    _save_data(data)
-
-
-def delete_memory_item(index: int) -> list[str]:
-    items = load_memory()
+def delete_memory_item(user_id: int, index: int) -> list[str]:
+    """Delete a preference item by its index."""
+    items = load_memory(user_id)
     if 0 <= index < len(items):
-        items.pop(index)
-        save_memory(items)
-    return load_memory()
+        target_item = items[index]
+        with get_db() as conn:
+            conn.execute(
+                "DELETE FROM user_memories WHERE user_id = ? AND memory_item = ?", 
+                (user_id, target_item)
+            )
+            conn.commit()
+    return load_memory(user_id)
 
+def add_memory_items(user_id: int, new_items: list[str]) -> list[str]:
+    """Add new preferences to SQLite, skipping duplicates."""
+    with get_db() as conn:
+        for item in new_items:
+            if item and item.strip():
+                conn.execute(
+                    "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
+                    (user_id, item.strip())
+                )
+        conn.commit()
+    return load_memory(user_id)
 
-def add_memory_items(new_items: list[str]) -> list[str]:
-    items = load_memory()
-    for item in new_items:
-        if item and item.strip() and item not in items:
-            items.append(item)
-    save_memory(items)
-    return items
+def clear_all_memory(user_id: int):
+    """Wipe all stored preferences for a user in SQLite."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM user_memories WHERE user_id = ?", (user_id,))
+        conn.commit()
 
+# ── User Profile ──
 
-def clear_all_memory():
-    data = _load_data()
-    data["items"] = []
-    _save_data(data)
+def load_user_profile(user_id: int) -> dict:
+    """Return the user's display name and bio from the users table in SQLite."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT name, bio FROM users WHERE id = ?", (user_id,))
+    row = cur.fetchone()
+    if row:
+        return {"name": row["name"] or "The Scholar", "bio": row["bio"] or ""}
+    return {"name": "The Scholar", "bio": ""}
 
+def save_user_profile(user_id: int, name: str, bio: str) -> dict:
+    """Persist the user's display name and bio in SQLite."""
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE users SET name = ?, bio = ? WHERE id = ?", 
+            (name.strip(), bio.strip(), user_id)
+        )
+        conn.commit()
+    return {"name": name.strip(), "bio": bio.strip()}
 
-# ── User Profile ───────────────────────────────────────────────────────────────
+# ── Memory Chat History ──
 
-def load_user_profile() -> dict:
-    """Return the user's display name and bio."""
-    data = _load_data()
-    return data.get("profile", {"name": "The Scholar", "bio": ""})
+def get_chat_history(user_id: int) -> list[dict]:
+    """Retrieve memory chatbot history for a user from SQLite."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT role, content FROM memory_chat_history WHERE user_id = ? ORDER BY id ASC", 
+        (user_id,)
+    )
+    return [{"role": r["role"], "content": r["content"]} for r in cur.fetchall()]
 
+def append_chat_message(user_id: int, role: str, content: str):
+    """Append a memory chat message to SQLite."""
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO memory_chat_history (user_id, role, content) VALUES (?, ?, ?)",
+            (user_id, role, content)
+        )
+        conn.commit()
 
-def save_user_profile(name: str, bio: str) -> dict:
-    """Persist the user's display name and bio."""
-    data = _load_data()
-    data["profile"] = {"name": name.strip(), "bio": bio.strip()}
-    _save_data(data)
-    return data["profile"]
-
-
-# ── Memory Chat History ───────────────────────────────────────────────────────
-
-def get_chat_history() -> list[dict]:
-    return _load_data().get("chat_history", [])
-
-
-def append_chat_message(role: str, content: str):
-    data = _load_data()
-    if "chat_history" not in data:
-        data["chat_history"] = []
-    data["chat_history"].append({"role": role, "content": content})
-    _save_data(data)
-
-
-# ── LLM Extraction ────────────────────────────────────────────────────────────
+# ── LLM Extraction ──
 
 class ExtractedPreferences(BaseModel):
     preferences: List[str] = Field(
         description="List of concise preference/fact statements about the user, max 12 words each."
     )
-
 
 EXTRACT_PROMPT = PromptTemplate(
     template="""You are a user-preference extraction system for a CS tutoring AI.
@@ -129,13 +147,13 @@ Student's message: "{message}"
     partial_variables={},
 )
 
-
-def extract_preferences_from_message(message: str) -> list[str]:
+def extract_preferences_from_message(user_id: int, message: str) -> list[str]:
+    """Query Groq LLM to extract user preferences from text and return them."""
     model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
     parser = JsonOutputParser(pydantic_object=ExtractedPreferences)
     prompt = EXTRACT_PROMPT.partial(format_instructions=parser.get_format_instructions())
     chain = prompt | model | parser
-    existing = load_memory()
+    existing = load_memory(user_id)
     existing_str = "\n".join(f"- {i}" for i in existing) if existing else "None"
     try:
         result = chain.invoke({"message": message, "existing": existing_str})
@@ -144,8 +162,7 @@ def extract_preferences_from_message(message: str) -> list[str]:
         print(f"Memory extraction error: {e}")
         return []
 
-
-# ── Conversational Memory Chat ────────────────────────────────────────────────
+# ── Conversational Memory Chat ──
 
 MEMORY_CHAT_SYSTEM = """You are the student's personal Study Companion — a warm, friendly AI whose only job in this chat is to learn about the student and remember their preferences.
 
@@ -161,15 +178,14 @@ Current stored preferences (for your awareness, don't re-ask for these):
 
 Be warm, brief, and confirmatory."""
 
-
-def memory_chat(user_message: str) -> tuple[str, list[str]]:
+def memory_chat(user_id: int, user_message: str) -> tuple[str, list[str]]:
     """
     Send a message to the memory chat LLM. Returns (bot_reply, newly_extracted_items).
-    Also persists the conversation and any extracted preferences.
+    Also persists the conversation and any extracted preferences in SQLite.
     """
-    # 1. Get history
-    history = get_chat_history()
-    append_chat_message("user", user_message)
+    # 1. Get history and save current message
+    history = get_chat_history(user_id)
+    append_chat_message(user_id, "user", user_message)
 
     # 2. Build formatted history for LLM
     formatted_history = []
@@ -179,11 +195,11 @@ def memory_chat(user_message: str) -> tuple[str, list[str]]:
         else:
             formatted_history.append(AIMessage(content=h["content"]))
 
-    stored = load_memory()
+    stored = load_memory(user_id)
     stored_str = "\n".join(f"- {i}" for i in stored) if stored else "None yet"
 
     # 3. Call LLM for conversational response
-    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0, streaming=True)
+    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
     prompt = ChatPromptTemplate.from_messages([
         ("system", MEMORY_CHAT_SYSTEM),
         *[(("human" if m.type == "human" else "ai"), m.content) for m in formatted_history],
@@ -193,61 +209,64 @@ def memory_chat(user_message: str) -> tuple[str, list[str]]:
     reply = chain.invoke({"stored_preferences": stored_str, "message": user_message})
 
     # 4. Persist bot reply
-    append_chat_message("assistant", reply)
+    append_chat_message(user_id, "assistant", reply)
 
     # 5. Extract preferences silently
-    extracted = extract_preferences_from_message(user_message)
+    extracted = extract_preferences_from_message(user_id, user_message)
     if extracted:
-        add_memory_items(extracted)
+        add_memory_items(user_id, extracted)
 
     return reply, extracted
 
+# ── System Context for Study Sessions ──
 
-# ── System Context for Study Sessions ─────────────────────────────────────────
-
-def get_memory_as_system_context() -> str:
-    items = load_memory()
+def get_memory_as_system_context(user_id: int) -> str:
+    """Load user preferences and format them as system prompt context."""
+    items = load_memory(user_id)
     if not items:
         return ""
     lines = "\n".join(f"- {item}" for item in items)
     return f"""PERSISTENT USER PREFERENCES (apply these in every response without being asked):
 {lines}"""
 
+# ── Subject Management ──
 
-# ── Subject Management ─────────────────────────────────────────────────────────
+def load_subjects(user_id: int) -> list[str]:
+    """Return the list of subjects the student has registered from SQLite."""
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT subject FROM user_subjects WHERE user_id = ? ORDER BY id ASC", 
+        (user_id,)
+    )
+    return [r["subject"] for r in cur.fetchall()]
 
-def load_subjects() -> list[str]:
-    """Return the list of subjects the student has registered."""
-    return _load_data().get("subjects", [])
+def save_subject(user_id: int, subject: str) -> list[str]:
+    """Add a subject if not already present in SQLite. Returns updated list."""
+    subject_title = subject.strip().title()
+    if subject_title:
+        with get_db() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO user_subjects (user_id, subject) VALUES (?, ?)",
+                (user_id, subject_title)
+            )
+            conn.commit()
+    return load_subjects(user_id)
 
+def delete_subject(user_id: int, subject: str) -> list[str]:
+    """Remove a subject by name from SQLite. Returns updated list."""
+    subject_title = subject.strip().title()
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM user_subjects WHERE user_id = ? AND subject = ?", 
+            (user_id, subject_title)
+        )
+        conn.commit()
+    return load_subjects(user_id)
 
-def save_subject(subject: str) -> list[str]:
-    """Add a subject if not already present. Returns updated list."""
-    data = _load_data()
-    subjects = data.get("subjects", [])
-    subject = subject.strip().title()
-    if subject and subject not in subjects:
-        subjects.append(subject)
-        data["subjects"] = subjects
-        _save_data(data)
-    return subjects
-
-
-def delete_subject(subject: str) -> list[str]:
-    """Remove a subject by name. Returns updated list."""
-    data = _load_data()
-    subjects = data.get("subjects", [])
-    subject = subject.strip().title()
-    if subject in subjects:
-        subjects.remove(subject)
-        data["subjects"] = subjects
-        _save_data(data)
-    return subjects
-
-
-def get_subjects_prompt_constraint() -> str:
+def get_subjects_prompt_constraint(user_id: int) -> str:
     """Return a formatted string to inject into LLM prompts restricting subject classification."""
-    subjects = load_subjects()
+    subjects = load_subjects(user_id)
     if not subjects:
         return ""
     formatted = ", ".join(f'"{s}"' for s in subjects)

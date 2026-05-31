@@ -680,10 +680,10 @@
                         <p id="sidebar-user-name" class="text-sm font-bold text-[#f6f3f5]">The Scholar</p>
                     </div>
                 </div>
-                <div
-                    class="flex items-center gap-3 text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-2 transition-colors cursor-pointer text-sm">
-                    <span class="material-symbols-outlined text-[18px]">help</span>
-                    Help
+                <div onclick="logout()"
+                    class="flex items-center gap-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 px-4 py-2 transition-colors cursor-pointer text-sm rounded-xl">
+                    <span class="material-symbols-outlined text-[18px]">logout</span>
+                    Logout
                 </div>
             </div>
         </aside>
@@ -1039,6 +1039,12 @@
                         signal: stopController.signal,
                     });
 
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        bubble.innerHTML = `<span class="text-error text-sm">❌ Error: ${errData.detail || "Failed to get response."}</span>`;
+                        return;
+                    }
+
                     const reader = res.body.getReader();
                     const decoder = new TextDecoder();
                     let buffer = "";
@@ -1131,9 +1137,17 @@
                 if (statusEl) statusEl.textContent = "⏳ PROCESSING...";
 
                 try {
-                    const res = await fetch(`${API}/api/sessions/${activeSessionId}/upload`, {
+                    const response = await fetch(`${API}/api/sessions/${activeSessionId}/upload`, {
                         method: "POST", body: form,
-                    }).then((r) => r.json());
+                    });
+                    const res = await response.json();
+                    
+                    if (!response.ok) {
+                        alert(res.detail || "Upload failed");
+                        if (statusEl) statusEl.textContent = "❌ UPLOAD FAILED";
+                        return;
+                    }
+                    
                     if (statusEl) statusEl.textContent = `✅ DATABASE READY (${res.doc_count} CHUNKS)`;
 
                     // Refresh documents list after successful upload
@@ -1602,6 +1616,13 @@
                 if (!confirm("Clear all stored memory? This cannot be undone.")) return;
                 const res = await fetch(`${API}/api/memory`, { method: "DELETE" }).then(r => r.json());
                 renderMemoryChipsView(res.items || []);
+            }
+
+            window.logout = async function () {
+                if (confirm("Are you sure you want to log out?")) {
+                    await fetch(`${API}/api/auth/logout`, { method: 'POST' });
+                    window.location.href = '/login.html';
+                }
             }
 
             init();
