@@ -112,22 +112,25 @@ def register(req: RegisterRequest, response: Response):
     if not username or not req.password:
         raise HTTPException(status_code=400, detail="Username and password are required")
         
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM users WHERE username = ?", (username,))
-    if cur.fetchone():
-        raise HTTPException(status_code=400, detail="Username is already taken")
-        
-    pwd_hash = hash_password(req.password)
+    # Open the database JUST ONCE for the entire function
     with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute(
+        cur = conn.cursor()
+        
+        # 1. Check if username exists using  single connection
+        cur.execute("SELECT id FROM users WHERE username = ?", (username,))
+        if cur.fetchone():
+            raise HTTPException(status_code=400, detail="Username is already taken")
+            
+        # 2. Hash password and write the new user using the SAME connection
+        pwd_hash = hash_password(req.password)
+        cur.execute(
             "INSERT INTO users (username, password_hash, name) VALUES (?, ?, ?)",
             (username, pwd_hash, req.name or "The Scholar")
         )
         conn.commit()
-        user_id = cursor.lastrowid
+        user_id = cur.lastrowid
         
+    # 3. Create the wristband token and set the browser cookie
     token = create_access_token({"user_id": user_id})
     response.set_cookie(
         key="access_token", 
@@ -135,7 +138,7 @@ def register(req: RegisterRequest, response: Response):
         httponly=True, 
         max_age=86400, 
         samesite="lax",
-        secure=False  # Set True in production over HTTPS
+        secure=False  
     )
     return {"status": "ok", "user_id": user_id}
 
@@ -146,6 +149,7 @@ def login(req: LoginRequest, response: Response):
     cur = conn.cursor()
     cur.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
     row = cur.fetchone()
+
     if not row or not verify_password(req.password, row["password_hash"]):
         raise HTTPException(status_code=400, detail="Invalid username or password")
         
@@ -167,6 +171,9 @@ def logout(response: Response):
     return {"status": "ok"}
 
 # ── Serve Frontend ──
+"""
+Every single one of these routes is just checking if a user has permission to view a layout file before letting them see it. It keeps strangers out of the main application and stops logged-in users from seeing the login screen.
+"""
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
@@ -212,6 +219,9 @@ def login_page(request: Request):
     return FileResponse("static/login.html")
 
 # ── Sessions ──
+"""
+Unlike the previous routes—which serve full visual HTML pages—these endpoints only send and receive raw data packets (JSON text). They all use Depends(get_current_user) as a locked gate, meaning a browser can only call them if the user has a valid, logged-in wristband.
+"""
 @app.get("/api/sessions")
 def get_sessions(user_id: int = Depends(get_current_user)):
     return tracker.load_all_sessions(user_id)
@@ -258,12 +268,13 @@ async def upload_and_build(
         file_data.append((f.filename, content))
 
     docs = load_documents(file_data)
+    # docs contains clean list of chunks
     if not docs:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The uploaded file(s) contain no readable text. Please ensure they are not empty or scanned images without OCR."
         )
-    vectorstore = create_vectorstore(docs, session_id)
+    vectorstore = create_vectorstore(docs, session_id) #transforms all the paragraphs into mathematical coordinates
     _retriever_cache[session_id] = vectorstore.as_retriever(search_kwargs={"k": 4})
 
     # Register successfully processed documents
@@ -279,18 +290,9 @@ def get_documents(session_id: str, user_id: int = Depends(get_current_user)):
 @app.delete("/api/sessions/{session_id}/knowledge")
 def delete_knowledge_base(session_id: str, user_id: int = Depends(get_current_user)):
     """Wipe the FAISS vector store and document list for a session, keeping chat history intact."""
-    import shutil
-    # Remove FAISS index from disk
-    db_path = os.path.join(os.getcwd(), "faiss_index_db", session_id)
-    if os.path.exists(db_path):
-        shutil.rmtree(db_path)
-    # Remove from retriever cache
-    _retriever_cache.pop(session_id, None)
-    # Clear document metadata from session
-    with get_db() as conn:
-        conn.execute("DELETE FROM documents WHERE session_id = ?", (session_id,))
-        conn.commit()
-    return {"status": "knowledge base cleared"}
+    tracker.clear_session_knowledge_base(session_id)
+    _retriever_cache[session_id].pop(session_id,None)
+    return {"status":"knowledge base cleared"}
 
 # ── Chat ──
 class ChatRequest(BaseModel):

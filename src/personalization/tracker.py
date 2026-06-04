@@ -166,6 +166,18 @@ def get_session_documents(session_id: str) -> list:
     )
     return [{"name": r["name"], "size": r["size"]} for r in cur.fetchall()]
 
+def clear_session_knowledge_base(session_id: str):
+    """Wipe FAISS files and document metadata from SQLite."""
+    # 1. Clear the hard drive folder
+    db_path = os.path.join(os.getcwd(), "faiss_index_db", session_id)
+    if os.path.exists(db_path):
+        shutil.rmtree(db_path)
+        
+    # 2. Clear the SQLite rows
+    with get_db() as conn:
+        conn.execute("DELETE FROM documents WHERE session_id = ?", (session_id,))
+        conn.commit()
+
 def save_quiz(session_id: str, quiz: dict):
     """Persist the generated quiz inside the session in SQLite so it survives navigation."""
     quiz_str = json.dumps(quiz)

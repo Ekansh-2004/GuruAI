@@ -3,6 +3,11 @@ import streamlit as st
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
+""" 
+This file is the Brain Builder for your application. It contains the exact functions that turn the shredded text chunks we just talked about into mathematical coordinates, and it saves those coordinates onto your hard drive so the AI can search through them later.
+"""
+
+
 # 1. Grab the absolute path of your current working directory
 # This ensures it always points to C:\Python_Study\BTP_1\faiss_index_db
 DB_BASE_PATH = os.path.join(os.getcwd(), "faiss_index_db")
