@@ -9,62 +9,62 @@ Two responsibilities:
 
 import os
 import json
-from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from langchain_core.messages import HumanMessage, AIMessage
 from pydantic import BaseModel, Field
 from typing import List
-from src.core.config import GROQ_API_KEY
+from src.core.llm import llm_default
 from src.core.database import get_db
 
 # ── Storage ──
 
 def load_memory(user_id: int) -> list[str]:
     """Load the preferences/memories list for a user from SQLite."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT memory_item FROM user_memories WHERE user_id = ? ORDER BY id ASC", 
-        (user_id,)
-    )
-    return [r["memory_item"] for r in cur.fetchall()]
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT memory_item FROM user_memories WHERE user_id = ? ORDER BY id ASC", 
+            (user_id,)
+        )
+        return [r["memory_item"] for r in cur.fetchall()]
 
 def save_memory(user_id: int, items: list[str]):
     """Overwrite the preferences/memories list for a user in SQLite."""
+    clean = [(user_id, item.strip()) for item in items if item and item.strip()]
     with get_db() as conn:
         conn.execute("DELETE FROM user_memories WHERE user_id = ?", (user_id,))
-        for item in items:
-            if item and item.strip():
-                conn.execute(
-                    "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
-                    (user_id, item.strip())
-                )
+        if clean:
+            conn.executemany(
+                "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
+                clean
+            )
         conn.commit()
 
 def delete_memory_item(user_id: int, index: int) -> list[str]:
-    """Delete a preference item by its index."""
-    items = load_memory(user_id)
-    if 0 <= index < len(items):
-        target_item = items[index]
-        with get_db() as conn:
-            conn.execute(
-                "DELETE FROM user_memories WHERE user_id = ? AND memory_item = ?", 
-                (user_id, target_item)
-            )
+    """Delete a preference item by its positional index (0-based)."""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id FROM user_memories WHERE user_id = ? ORDER BY id ASC LIMIT 1 OFFSET ?",
+            (user_id, index)
+        )
+        row = cur.fetchone()
+        if row:
+            conn.execute("DELETE FROM user_memories WHERE id = ?", (row["id"],))
             conn.commit()
     return load_memory(user_id)
 
 def add_memory_items(user_id: int, new_items: list[str]) -> list[str]:
     """Add new preferences to SQLite, skipping duplicates."""
-    with get_db() as conn:
-        for item in new_items:
-            if item and item.strip():
-                conn.execute(
-                    "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
-                    (user_id, item.strip())
-                )
-        conn.commit()
+    clean = [(user_id, item.strip()) for item in new_items if item and item.strip()]
+    if clean:
+        with get_db() as conn:
+            conn.executemany(
+                "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
+                clean
+            )
+            conn.commit()
     return load_memory(user_id)
 
 def clear_all_memory(user_id: int):
@@ -77,13 +77,13 @@ def clear_all_memory(user_id: int):
 
 def load_user_profile(user_id: int) -> dict:
     """Return the user's display name and bio from the users table in SQLite."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT name, bio FROM users WHERE id = ?", (user_id,))
-    row = cur.fetchone()
-    if row:
-        return {"name": row["name"] or "The Scholar", "bio": row["bio"] or ""}
-    return {"name": "The Scholar", "bio": ""}
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT name, bio FROM users WHERE id = ?", (user_id,))
+        row = cur.fetchone()
+        if row:
+            return {"name": row["name"] or "The Scholar", "bio": row["bio"] or ""}
+        return {"name": "The Scholar", "bio": ""}
 
 def save_user_profile(user_id: int, name: str, bio: str) -> dict:
     """Persist the user's display name and bio in SQLite."""
@@ -99,13 +99,13 @@ def save_user_profile(user_id: int, name: str, bio: str) -> dict:
 
 def get_chat_history(user_id: int) -> list[dict]:
     """Retrieve memory chatbot history for a user from SQLite."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT role, content FROM memory_chat_history WHERE user_id = ? ORDER BY id ASC", 
-        (user_id,)
-    )
-    return [{"role": r["role"], "content": r["content"]} for r in cur.fetchall()]
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT role, content FROM memory_chat_history WHERE user_id = ? ORDER BY id ASC", 
+            (user_id,)
+        )
+        return [{"role": r["role"], "content": r["content"]} for r in cur.fetchall()]
 
 def append_chat_message(user_id: int, role: str, content: str):
     """Append a memory chat message to SQLite."""
@@ -149,7 +149,7 @@ Student's message: "{message}"
 
 def extract_preferences_from_message(user_id: int, message: str) -> list[str]:
     """Query Groq LLM to extract user preferences from text and return them."""
-    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
+    model = llm_default
     parser = JsonOutputParser(pydantic_object=ExtractedPreferences)
     prompt = EXTRACT_PROMPT.partial(format_instructions=parser.get_format_instructions())
     chain = prompt | model | parser
@@ -199,7 +199,7 @@ def memory_chat(user_id: int, user_message: str) -> tuple[str, list[str]]:
     stored_str = "\n".join(f"- {i}" for i in stored) if stored else "None yet"
 
     # 3. Call LLM for conversational response
-    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
+    model = llm_default
     prompt = ChatPromptTemplate.from_messages([
         ("system", MEMORY_CHAT_SYSTEM),
         *[(("human" if m.type == "human" else "ai"), m.content) for m in formatted_history],
@@ -233,13 +233,13 @@ def get_memory_as_system_context(user_id: int) -> str:
 
 def load_subjects(user_id: int) -> list[str]:
     """Return the list of subjects the student has registered from SQLite."""
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT subject FROM user_subjects WHERE user_id = ? ORDER BY id ASC", 
-        (user_id,)
-    )
-    return [r["subject"] for r in cur.fetchall()]
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT subject FROM user_subjects WHERE user_id = ? ORDER BY id ASC", 
+            (user_id,)
+        )
+        return [r["subject"] for r in cur.fetchall()]
 
 def save_subject(user_id: int, subject: str) -> list[str]:
     """Add a subject if not already present in SQLite. Returns updated list."""

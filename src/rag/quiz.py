@@ -1,8 +1,7 @@
 import json
 import random
-from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
-from src.core.config import GROQ_API_KEY
+from src.core.llm import llm_creative
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -47,7 +46,7 @@ Do NOT invent or use any other subject name whatsoever."""
 When generating the 'subject' field, use a broadly recognized CS subject (e.g., "Cyber Security", "Data Structures", "Machine Learning", "Operating Systems", "Computer Networks").
 Then specify the precise sub-topic in the 'topic' field."""
 
-    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0, temperature=0.7)
+    model = llm_creative
     parser = JsonOutputParser(pydantic_object=Quiz)
 
     if user_subjects and len(user_subjects) > 0:

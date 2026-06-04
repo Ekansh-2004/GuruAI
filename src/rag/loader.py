@@ -4,11 +4,12 @@ from typing import List, Tuple
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from src.core.config import CHUNK_SIZE, CHUNK_OVERLAP
 
 def load_documents(file_data: List[Tuple[str, bytes]]) -> List[Document]:
     """Load and chunk multiple files."""
     all_docs = []
-    splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=45)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
     
     for name, data in file_data:
         ext = os.path.splitext(name)[1].lower()

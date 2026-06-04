@@ -34,18 +34,24 @@ app.add_middleware(
 def startup_event():
     init_db()
 
-# ── In-memory retriever cache ──
-_retriever_cache: dict = {}
+# ── In-memory retriever cache (LRU-bounded) ──
+from collections import OrderedDict
+_retriever_cache: OrderedDict = OrderedDict()
+_RETRIEVER_CACHE_MAX = 32  # Each entry holds a FAISS index (~10-50MB in RAM)
 
 def get_retriever(session_id: str):
-    """Cache only the retriever (vectorstore)."""
-    if session_id not in _retriever_cache:
-        db = load_existing_vectorstore(session_id)
-        if db:
-            _retriever_cache[session_id] = db.as_retriever(search_kwargs={"k": 3})
-        else:
-            return None
-    return _retriever_cache[session_id]
+    """Return a cached retriever, loading from disk if needed. LRU-evicts oldest when full."""
+    if session_id in _retriever_cache:
+        _retriever_cache.move_to_end(session_id)  # Mark as recently used
+        return _retriever_cache[session_id]
+    db = load_existing_vectorstore(session_id)
+    if not db:
+        return None
+    retriever = db.as_retriever(search_kwargs={"k": 3})
+    _retriever_cache[session_id] = retriever
+    if len(_retriever_cache) > _RETRIEVER_CACHE_MAX:
+        _retriever_cache.popitem(last=False)  # Evict least-recently-used
+    return retriever
 
 # ── Authentication Dependencies ──
 
@@ -73,6 +79,17 @@ def check_auth_html(request: Request) -> Optional[int]:
         if payload and "user_id" in payload:
             return payload["user_id"]
     return None
+
+def verify_session_ownership(session_id: str, user_id: int):
+    """Raises 403/404 if the session does not belong to the authenticated user."""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,))
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Session not found")
+        if row["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Access denied")
 
 def build_profile_summary(user_id: int) -> str:
     """
@@ -145,10 +162,10 @@ def register(req: RegisterRequest, response: Response):
 @app.post("/api/auth/login")
 def login(req: LoginRequest, response: Response):
     username = req.username.strip().lower()
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
-    row = cur.fetchone()
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
+        row = cur.fetchone()
 
     if not row or not verify_password(req.password, row["password_hash"]):
         raise HTTPException(status_code=400, detail="Invalid username or password")
@@ -233,6 +250,7 @@ def create_session(user_id: int = Depends(get_current_user)):
 
 @app.delete("/api/sessions/{session_id}")
 def delete_session(session_id: str, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(session_id, user_id)
     tracker.delete_session(session_id)
     _retriever_cache.pop(session_id, None)
     return {"status": "deleted"}
@@ -243,15 +261,18 @@ def update_title(
     title: str = Form(...), 
     user_id: int = Depends(get_current_user)
 ):
+    verify_session_ownership(session_id, user_id)
     tracker.update_session_title(session_id, title)
     return {"status": "updated"}
 
 @app.get("/api/sessions/{session_id}/messages")
 def get_messages(session_id: str, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(session_id, user_id)
     return tracker.get_session_messages(session_id)
 
 @app.get("/api/sessions/{session_id}/db-status")
 def db_status(session_id: str, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(session_id, user_id)
     path = f"faiss_index_db/{session_id}/index.faiss"
     return {"exists": os.path.exists(path)}
 
@@ -262,6 +283,7 @@ async def upload_and_build(
     files: List[UploadFile] = File(...),
     user_id: int = Depends(get_current_user)
 ):
+    verify_session_ownership(session_id, user_id)
     file_data = []
     for f in files:
         content = await f.read()
@@ -285,13 +307,15 @@ async def upload_and_build(
 
 @app.get("/api/sessions/{session_id}/documents")
 def get_documents(session_id: str, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(session_id, user_id)
     return tracker.get_session_documents(session_id)
 
 @app.delete("/api/sessions/{session_id}/knowledge")
 def delete_knowledge_base(session_id: str, user_id: int = Depends(get_current_user)):
     """Wipe the FAISS vector store and document list for a session, keeping chat history intact."""
+    verify_session_ownership(session_id, user_id)
     tracker.clear_session_knowledge_base(session_id)
-    _retriever_cache[session_id].pop(session_id,None)
+    _retriever_cache.pop(session_id, None)
     return {"status":"knowledge base cleared"}
 
 # ── Chat ──
@@ -301,6 +325,7 @@ class ChatRequest(BaseModel):
 
 @app.post("/api/chat")
 def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(req.session_id, user_id)
     retriever = get_retriever(req.session_id)
     if not retriever:
         raise HTTPException(
@@ -354,6 +379,7 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
 # ── Quiz ──
 @app.post("/api/sessions/{session_id}/quiz")
 def generate_quiz(session_id: str, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(session_id, user_id)
     path = f"faiss_index_db/{session_id}/index.faiss"
     if not os.path.exists(path):
         raise HTTPException(status_code=400, detail="Build the database first.")
@@ -361,11 +387,12 @@ def generate_quiz(session_id: str, user_id: int = Depends(get_current_user)):
     if not quiz or not quiz.get("questions"):
         raise HTTPException(status_code=500, detail="Quiz generation failed.")
     tracker.save_quiz(session_id, quiz)         # Keep for topic.html backwards compat
-    tracker.add_quiz_message(session_id, quiz)  # Embed in chat feed for inline rendering
+    tracker.add_message(session_id, "quiz", quiz)  # Embed in chat feed for inline rendering
     return quiz
 
 @app.get("/api/sessions/{session_id}/quiz")
 def get_quiz(session_id: str, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(session_id, user_id)
     return tracker.get_quiz(session_id)
 
 class QuizAnswerRequest(BaseModel):
@@ -376,6 +403,7 @@ class QuizAnswerRequest(BaseModel):
 
 @app.post("/api/quiz/answer")
 def submit_answer(req: QuizAnswerRequest, user_id: int = Depends(get_current_user)):
+    verify_session_ownership(req.session_id, user_id)
     tracker.update_topic_performance(req.session_id, req.subject, req.topic, req.is_correct)
     return {"status": "recorded"}
 

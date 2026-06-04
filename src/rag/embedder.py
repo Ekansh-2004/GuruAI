@@ -1,5 +1,4 @@
 import os
-import streamlit as st
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
@@ -16,9 +15,17 @@ def get_db_path(session_id: str) -> str:
     """Helper to get the specific path for a session's DB."""
     return os.path.join(DB_BASE_PATH, session_id)
 
+# ── Cached embedding model singleton ──
+# HuggingFaceEmbeddings loads ~80MB of model weights from disk.
+# Caching at module level avoids reloading on every vectorstore operation.
+_embeddings = None
+
 def get_embeddings():
-    """Load the fast local embedding model."""
-    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    """Return the cached local embedding model (loaded once on first call)."""
+    global _embeddings
+    if _embeddings is None:
+        _embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return _embeddings
 
 def create_vectorstore(docs, session_id: str):
     """Build FAISS index and save it permanently to the hard drive for the session."""

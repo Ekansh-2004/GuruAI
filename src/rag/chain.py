@@ -1,13 +1,12 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_groq import ChatGroq
 from langchain_core.output_parsers import StrOutputParser
-from src.core.config import GROQ_API_KEY
+from src.core.llm import llm_default
 from src.rag.crag import build_crag_context           # ← CRAG grading step
 
 
 def build_rag_chain(retriever, knowledge_profile_summary: str = "", user_memory_context: str = ""):
     # Same Groq / Llama model as before — only the retrieval step changes.
-    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0)
+    model = llm_default
 
     # ── 1. User Memory ────────────────────────────────────────────────────────
     memory_section = ""

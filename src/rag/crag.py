@@ -53,7 +53,13 @@ Relevant document IDs:""",
     input_variables=["question", "documents"],
 )
 
-_grader_chain = _GRADER_PROMPT | _get_grader_model() | StrOutputParser()
+_grader_chain = None
+
+def _get_grader_chain():
+    global _grader_chain
+    if _grader_chain is None:
+        _grader_chain = _GRADER_PROMPT | _get_grader_model() | StrOutputParser()
+    return _grader_chain
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -71,7 +77,7 @@ def grade_documents(question: str, docs: List[Document]) -> List[Document]:
         formatted_docs += f"--- Document ID: {i} ---\n{doc.page_content}\n\n"
 
     try:
-        verdict = _grader_chain.invoke({
+        verdict = _get_grader_chain().invoke({
             "question": question,
             "documents": formatted_docs,
         }).strip().lower()

@@ -1,9 +1,8 @@
-from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser, StrOutputParser
 from pydantic import BaseModel, Field
 from typing import List
-from src.core.config import GROQ_API_KEY
+from src.core.llm import llm_balanced, llm_creative
 
 
 # ── Adaptive Explanation ──────────────────────────────────────────────────────
@@ -35,12 +34,7 @@ Mastery Level: {mastery_level}
 
 def generate_topic_explanation(topic: str, subject: str, mastery_level: str, score_pct: int) -> str:
     """Generate an adaptive explanation for a topic based on the student's mastery."""
-    model = ChatGroq(
-        model="llama-3.3-70b-versatile",
-        api_key=GROQ_API_KEY,
-        max_retries=0,
-        temperature=0.5,
-    )
+    model = llm_balanced
     chain = EXPLAIN_PROMPT | model | StrOutputParser()
     return chain.invoke({
         "topic": topic,
@@ -80,7 +74,7 @@ Do not include markdown outside the JSON block.""",
 
 def generate_topic_quiz(topic: str, subject: str, mastery_level: str, score_pct: int) -> dict:
     """Generate an adaptive quiz about a specific topic."""
-    model = ChatGroq(model="llama-3.3-70b-versatile", api_key=GROQ_API_KEY, max_retries=0, temperature=0.7)
+    model = llm_creative
     parser = JsonOutputParser(pydantic_object=TopicQuiz)
 
     prompt = TOPIC_QUIZ_PROMPT.partial(format_instructions=parser.get_format_instructions())
