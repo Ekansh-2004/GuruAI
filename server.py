@@ -14,6 +14,8 @@ from src.rag.embedder import create_vectorstore, load_existing_vectorstore
 from src.rag.chain import build_rag_chain
 from src.rag.quiz import generate_quiz_for_session_db
 from src.rag.topic_tutor import generate_topic_explanation, generate_topic_quiz
+from langchain_community.retrievers import TFIDFRetriever
+from src.rag.retriever import HybridRetriever
 import src.personalization.tracker as tracker
 import src.personalization.user_memory as user_memory
 
@@ -47,7 +49,12 @@ def get_retriever(session_id: str):
     db = load_existing_vectorstore(session_id)
     if not db:
         return None
-    retriever = db.as_retriever(search_kwargs={"k": 3})
+    
+    # Extract documents from FAISS to build the sparse TF-IDF retriever dynamically
+    docs = list(db.docstore._dict.values())
+    tfidf_retriever = TFIDFRetriever.from_documents(docs)
+    
+    retriever = HybridRetriever(vectorstore=db, tfidf_retriever=tfidf_retriever, top_n=4)
     _retriever_cache[session_id] = retriever
     if len(_retriever_cache) > _RETRIEVER_CACHE_MAX:
         _retriever_cache.popitem(last=False)  # Evict least-recently-used
@@ -297,7 +304,8 @@ async def upload_and_build(
             detail="The uploaded file(s) contain no readable text. Please ensure they are not empty or scanned images without OCR."
         )
     vectorstore = create_vectorstore(docs, session_id) #transforms all the paragraphs into mathematical coordinates
-    _retriever_cache[session_id] = vectorstore.as_retriever(search_kwargs={"k": 4})
+    tfidf_retriever = TFIDFRetriever.from_documents(docs)
+    _retriever_cache[session_id] = HybridRetriever(vectorstore=vectorstore, tfidf_retriever=tfidf_retriever, top_n=4)
 
     # Register successfully processed documents
     for name, content in file_data:
