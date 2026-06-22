@@ -43,9 +43,10 @@ RESPONSE LENGTH RULES:
 - NO code unless explicitly requested.
 
 SOURCE LABELLING & CITATION:
-- Use [Textbook] if answering from provided document context.
+- Use [Textbook] if answering from provided textbook document context.
+- Use [Web Search] if answering from web search results context.
 - Use [General knowledge] otherwise.
-- AT THE VERY END of your response, you MUST append a section titled "### Context/Sources Used:" and display the exact excerpts or comments from the Textbook Facts that you relied on to generate the answer. If you used General Knowledge, just state General Knowledge used."""
+- AT THE VERY END of your response, you MUST append a section titled "### Context/Sources Used:" and display the exact excerpts, comments, or URLs from the Textbook Facts or Web Search Results that you relied on to generate the answer. If you used General Knowledge, just state General Knowledge used."""
 
     # ── 3. Adaptive depth ─────────────────────────────────────────────────────
     adaptive_section = ""

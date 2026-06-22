@@ -103,6 +103,32 @@ def grade_documents(question: str, docs: List[Document]) -> List[Document]:
         return docs
 
 
+def _web_search(query: str, max_results: int = 3) -> str:
+    """
+    Perform a web search using ddgs and return a formatted context string.
+    """
+    try:
+        from ddgs import DDGS
+        print(f"[CRAG Web Search] Querying: {query!r}")
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+        if not results:
+            print("[CRAG Web Search] No results returned from DuckDuckGo.")
+            return ""
+        
+        formatted_results = []
+        for i, r in enumerate(results):
+            title = r.get("title", "No Title")
+            href = r.get("href", "No Link")
+            body = r.get("body", "")
+            formatted_results.append(f"--- Web Search Result {i+1}: {title} ---\nSource URL: {href}\nContent: {body}\n")
+        
+        return "\n".join(formatted_results)
+    except Exception as e:
+        print(f"[CRAG Web Search] Error during web search: {e}")
+        return ""
+
+
 def build_crag_context(retriever, question: str) -> Tuple[str, str]:
     """
     Full CRAG retrieval + grading pipeline.
@@ -111,8 +137,9 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str]:
       1. Retrieve top-k docs from the FAISS retriever.
       2. Grade each doc with Gemini.
       3. If ≥1 relevant doc is found → return their combined text + "[Textbook]".
-      4. If 0 relevant docs → return a fallback notice + "[General Knowledge]"
-         so the LLM knows to answer from its own training data.
+      4. If 0 relevant docs → trigger web search fallback.
+      5. If web search succeeds → return search context + "[Web Search]".
+      6. If web search has no results/fails → return a fallback notice + "[General Knowledge]".
 
     Returns:
         (context_text, source_label)
@@ -129,12 +156,21 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str]:
         context = "\n\n".join(doc.page_content for doc in relevant_docs)
         source_label = "[Textbook]"
     else:
-        context = (
-            "No relevant textbook content was found for this question after "
-            "Corrective RAG filtering. Answer from your general knowledge as a "
-            "CS tutor, but explicitly tell the student that this information does "
-            "NOT come from their uploaded documents."
-        )
-        source_label = "[General Knowledge — no relevant textbook content found]"
+        print("[CRAG] ❌ All docs graded IRRELEVANT. Triggering Web Search fallback...")
+        web_context = _web_search(question)
+        if web_context:
+            print("[CRAG] ✅ Web Search fallback succeeded.")
+            context = web_context
+            source_label = "[Web Search]"
+        else:
+            print("[CRAG] ❌ Web Search fallback returned no results or failed. Falling back to General Knowledge.")
+            context = (
+                "No relevant textbook content was found for this question after "
+                "Corrective RAG filtering, and web search did not return results. "
+                "Answer from your general knowledge as a CS tutor, but explicitly "
+                "tell the student that this information does NOT come from their "
+                "uploaded documents."
+            )
+            source_label = "[General Knowledge — no relevant textbook content found]"
 
     return context, source_label
