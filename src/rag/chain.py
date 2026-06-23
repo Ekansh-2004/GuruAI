@@ -79,15 +79,12 @@ Your tone MUST drastically change depending on the score. A WEAK explanation and
     ])
 
     # ── 4. CRAG-aware chain ────────────────────────────────────────────────────
-    # We override the context lambda to run the full CRAG pipeline:
-    #   retrieve → Gemini grade → filter → format
-    # Everything else (prompt, model, parser) is identical to before.
+    # build_crag_context now returns (context_str, source_label, sources_metadata).
+    # The chain only needs the context string [0]; sources_metadata is collected
+    # separately in server.py (before streaming) and sent as a final SSE event.
     chain = (
         {
-            # build_crag_context returns (context_str, source_label).
-            # We only need the context text here; source_label is printed to
-            # the server log so the developer can see whether CRAG fired.
-            "context": lambda x: build_crag_context(retriever, x["question"])[0],
+            "context": lambda x: x.get("context", ""),
             "question": lambda x: x["question"],
             "chat_history": lambda x: x["chat_history"],
         }

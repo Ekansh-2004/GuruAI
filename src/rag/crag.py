@@ -8,10 +8,11 @@ are silently discarded before the answer is generated.
 Two public helpers are exposed:
   • grade_documents(question, docs) → list[Document]
       Returns only the docs that Gemini considers relevant.
-  • build_crag_context(retriever, question) → (str, str)
-      Returns (formatted_context, source_label) ready for prompt injection.
-      source_label is "[Textbook]" or "[General Knowledge — no relevant
-      textbook content found]" so the chain can tell the user.
+  • build_crag_context(retriever, question) → (str, str, list)
+      Returns (formatted_context, source_label, sources_metadata) ready for
+      prompt injection and UI display.
+      source_label is "[Textbook]", "[Web Search]", or "[General Knowledge]".
+      sources_metadata is a list of dicts with keys: type, title, snippet, url.
 """
 
 from typing import List, Tuple
@@ -103,9 +104,11 @@ def grade_documents(question: str, docs: List[Document]) -> List[Document]:
         return docs
 
 
-def _web_search(query: str, max_results: int = 3) -> str:
+def _web_search(query: str, max_results: int = 3):
     """
-    Perform a web search using ddgs and return a formatted context string.
+    Perform a web search using ddgs.
+    Returns (formatted_context_str, raw_results_list).
+    raw_results_list items have keys: title, href, body.
     """
     try:
         from ddgs import DDGS
@@ -114,22 +117,24 @@ def _web_search(query: str, max_results: int = 3) -> str:
             results = list(ddgs.text(query, max_results=max_results))
         if not results:
             print("[CRAG Web Search] No results returned from DuckDuckGo.")
-            return ""
-        
+            return "", []
+
         formatted_results = []
         for i, r in enumerate(results):
             title = r.get("title", "No Title")
-            href = r.get("href", "No Link")
-            body = r.get("body", "")
-            formatted_results.append(f"--- Web Search Result {i+1}: {title} ---\nSource URL: {href}\nContent: {body}\n")
-        
-        return "\n".join(formatted_results)
+            href  = r.get("href", "")
+            body  = r.get("body", "")
+            formatted_results.append(
+                f"--- Web Search Result {i+1}: {title} ---\nSource URL: {href}\nContent: {body}\n"
+            )
+
+        return "\n".join(formatted_results), results
     except Exception as e:
         print(f"[CRAG Web Search] Error during web search: {e}")
-        return ""
+        return "", []
 
 
-def build_crag_context(retriever, question: str) -> Tuple[str, str]:
+def build_crag_context(retriever, question: str) -> Tuple[str, str, list]:
     """
     Full CRAG retrieval + grading pipeline.
 
@@ -142,7 +147,9 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str]:
       6. If web search has no results/fails → return a fallback notice + "[General Knowledge]".
 
     Returns:
-        (context_text, source_label)
+        (context_text, source_label, sources_metadata)
+        sources_metadata is a list of dicts:
+            { "type": "textbook"|"web", "title": str, "snippet": str, "url": str|None }
     """
     raw_docs: List[Document] = retriever.invoke(question)
     print(f"[CRAG] Retrieved {len(raw_docs)} docs, grading now …")
@@ -155,13 +162,38 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str]:
     if relevant_docs:
         context = "\n\n".join(doc.page_content for doc in relevant_docs)
         source_label = "[Textbook]"
+        # Build metadata from LangChain Document.metadata (source filename + page)
+        sources_metadata = []
+        for doc in relevant_docs:
+            meta  = doc.metadata or {}
+            fname = meta.get("source", "Textbook")
+            # Normalise to just the basename so we don't leak full server paths
+            import os as _os
+            fname = _os.path.basename(fname) if fname else "Textbook"
+            page  = meta.get("page")
+            title = f"{fname} · Page {page + 1}" if page is not None else fname
+            sources_metadata.append({
+                "type":    "textbook",
+                "title":   title,
+                "snippet": doc.page_content[:300],
+                "url":     None,
+            })
     else:
         print("[CRAG] ❌ All docs graded IRRELEVANT. Triggering Web Search fallback...")
-        web_context = _web_search(question)
+        web_context, web_results = _web_search(question)
         if web_context:
             print("[CRAG] ✅ Web Search fallback succeeded.")
             context = web_context
             source_label = "[Web Search]"
+            sources_metadata = [
+                {
+                    "type":    "web",
+                    "title":   r.get("title", "Web Result"),
+                    "snippet": r.get("body", "")[:300],
+                    "url":     r.get("href", None),
+                }
+                for r in web_results
+            ]
         else:
             print("[CRAG] ❌ Web Search fallback returned no results or failed. Falling back to General Knowledge.")
             context = (
@@ -172,5 +204,6 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str]:
                 "uploaded documents."
             )
             source_label = "[General Knowledge — no relevant textbook content found]"
+            sources_metadata = []
 
-    return context, source_label
+    return context, source_label, sources_metadata

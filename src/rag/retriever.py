@@ -42,24 +42,24 @@ class HybridRetriever(BaseRetriever):
         
         # 1. Retrieve from dense (FAISS)
         dense_docs = self.vectorstore.similarity_search(query, k=self.top_n * 2)
-        print(f"[Dense (FAISS) Retrieved {len(dense_docs)} documents]:")
-        for i, doc in enumerate(dense_docs):
-            print(f"  {i+1}: {doc.page_content[:80]}...")
+        # print(f"[Dense (FAISS) Retrieved {len(dense_docs)} documents]:")
+        # for i, doc in enumerate(dense_docs):
+        #     print(f"  {i+1}: {doc.page_content[:80]}...")
         
         # 2. Retrieve from sparse (TF-IDF)
         self.tfidf_retriever.k = self.top_n * 2
         sparse_docs = self.tfidf_retriever.invoke(query)
-        print(f"[Sparse (TF-IDF) Retrieved {len(sparse_docs)} documents]:")
-        for i, doc in enumerate(sparse_docs):
-            print(f"  {i+1}: {doc.page_content[:80]}...")
+        # print(f"[Sparse (TF-IDF) Retrieved {len(sparse_docs)} documents]:")
+        # for i, doc in enumerate(sparse_docs):
+        #     print(f"  {i+1}: {doc.page_content[:80]}...")
         
         # 3. Merge using RRF
         merged_docs = reciprocal_rank_fusion(dense_docs, sparse_docs)
         final_docs = merged_docs[:self.top_n]
         
-        print(f"[Final RRF Merged Top {len(final_docs)} documents]:")
-        for i, doc in enumerate(final_docs):
-            print(f"  {i+1}: {doc.page_content[:80]}...")
-        print("---------------------------------------------------\n")
+        # print(f"[Final RRF Merged Top {len(final_docs)} documents]:")
+        # for i, doc in enumerate(final_docs):
+        #     print(f"  {i+1}: {doc.page_content[:80]}...")
+        # print("---------------------------------------------------\n")
         
         return final_docs

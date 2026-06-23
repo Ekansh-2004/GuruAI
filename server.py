@@ -367,12 +367,23 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
         else:
             formatted_history.append(AIMessage(content=h["content"]))
 
+    # ── Run CRAG before streaming so we capture sources metadata ────────────
+    from src.rag.crag import build_crag_context
+    context_text, source_label, sources_metadata = build_crag_context(retriever, req.question)
+    print(f"[Chat] Source label: {source_label} | Sources count: {len(sources_metadata)}")
+
     def generate():
         full_response = ""
         try:
-            for chunk in chain.stream({"question": req.question, "chat_history": formatted_history}):
+            for chunk in chain.stream({
+                "question": req.question,
+                "context": context_text,
+                "chat_history": formatted_history,
+            }):
                 full_response += chunk
                 yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+            # Emit sources metadata before [DONE] so the UI can attach the drawer
+            yield f"data: {json.dumps({'sources': sources_metadata})}\n\n"
             yield "data: [DONE]\n\n"
         finally:
             if full_response:
