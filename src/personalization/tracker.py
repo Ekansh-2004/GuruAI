@@ -3,12 +3,32 @@ import os
 import uuid
 import shutil
 import difflib
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 from src.core.database import get_db
+from src.personalization.spaced_rep import SpacedRepetitionScheduler
 
 # EMA smoothing factor
 _EMA_ALPHA = 0.3
+
+# Shared scheduler instance for computing spaced-repetition review dates.
+scheduler = SpacedRepetitionScheduler()
+
+
+@dataclass
+class MasteryRecord:
+    """A user's mastery record for one (subject, topic) pair, as stored in knowledge_profile."""
+    user_id: int
+    subject: str
+    topic: str
+    correct: int = 0
+    total: int = 0
+    ema_score: Optional[float] = None
+    last_reviewed_at: Optional[datetime] = None
+    review_interval_days: int = 1
+    review_count: int = 0
+    next_review_date: Optional[datetime] = None
 
 def load_all_sessions(user_id: int) -> Dict:
     """Load the session dictionary for a specific user from SQLite."""
@@ -265,19 +285,40 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
         recent = 1.0 if correct else 0.0
         prev = ema if ema is not None else 0.0
         new_ema = (recent * _EMA_ALPHA) + (prev * (1 - _EMA_ALPHA))
-        
-        # 4. Insert or update entry
+
+        # 4. Advance the spaced-repetition schedule for this review
+        cur.execute(
+            "SELECT review_count FROM knowledge_profile WHERE user_id = ? AND subject = ? AND topic = ?",
+            (user_id, subj, t)
+        )
+        prev_row = cur.fetchone()
+        new_review_count = (prev_row["review_count"] or 0) + 1 if prev_row else 1
+        now = datetime.now()
+        next_review_date = scheduler.calculate_next_review_date(new_ema, new_review_count, now)
+        review_interval_days = (next_review_date - now).days
+
+        # 5. Insert or update entry
         conn.execute(
             """
-            INSERT INTO knowledge_profile (user_id, subject, topic, correct, total, ema_score, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            INSERT INTO knowledge_profile (
+                user_id, subject, topic, correct, total, ema_score,
+                last_reviewed_at, review_interval_days, review_count, next_review_date, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id, subject, topic) DO UPDATE SET
                 correct = excluded.correct,
                 total = excluded.total,
                 ema_score = excluded.ema_score,
+                last_reviewed_at = excluded.last_reviewed_at,
+                review_interval_days = excluded.review_interval_days,
+                review_count = excluded.review_count,
+                next_review_date = excluded.next_review_date,
                 updated_at = CURRENT_TIMESTAMP
             """,
-            (user_id, subj, t, correct_val, total_val, new_ema)
+            (
+                user_id, subj, t, correct_val, total_val, new_ema,
+                now, review_interval_days, new_review_count, next_review_date
+            )
         )
         conn.commit()
 
@@ -318,3 +359,185 @@ def delete_topic(user_id: int, subject: str, topic: str):
             (user_id, subj_key, topic_key)
         )
         conn.commit()
+
+def _parse_ts(value) -> Optional[datetime]:
+    """Parse a SQLite-stored timestamp string back into a datetime, or None."""
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value)
+
+_TOPIC_COLUMNS = """
+    id, subject, topic, correct, total, ema_score,
+    last_reviewed_at, review_interval_days, review_count, next_review_date
+"""
+
+def _topic_row_to_dict(row) -> dict:
+    """Shape a knowledge_profile row into the schedule dict shared by the SRS endpoints."""
+    ema_score = row["ema_score"]
+    mastery_level = ema_score if ema_score is not None else (
+        row["correct"] / row["total"] if row["total"] else 0.0
+    )
+    last_reviewed_at = _parse_ts(row["last_reviewed_at"])
+    next_review_date = _parse_ts(row["next_review_date"])
+    days_until_review = (
+        (next_review_date.date() - datetime.now().date()).days if next_review_date else 0
+    )
+    interval_days = row["review_interval_days"] or 1
+    urgency_score = round(min(1.0, max(0.0, 1 - (days_until_review / interval_days))), 2)
+
+    return {
+        "id": row["id"],
+        "subject": row["subject"],
+        "topic": row["topic"],
+        "mastery_level": mastery_level,
+        "mastery_category": scheduler.get_mastery_category(mastery_level),
+        "last_reviewed": last_reviewed_at.date().isoformat() if last_reviewed_at else None,
+        "next_review": next_review_date.date().isoformat() if next_review_date else None,
+        "days_until_review": days_until_review,
+        "review_count": row["review_count"] or 0,
+        "is_due": scheduler.is_due_for_review(last_reviewed_at, next_review_date),
+        "urgency_score": urgency_score,
+    }
+
+def list_topics_with_schedule(user_id: int) -> List[dict]:
+    """Return every tracked topic for a user with its spaced-repetition schedule info."""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT {_TOPIC_COLUMNS} FROM knowledge_profile WHERE user_id = ?",
+            (user_id,)
+        )
+        rows = cur.fetchall()
+    return [_topic_row_to_dict(row) for row in rows]
+
+def get_topic_by_id(topic_id: int, user_id: int) -> Optional[dict]:
+    """Fetch a single topic's schedule info, scoped to its owning user."""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            f"SELECT {_TOPIC_COLUMNS} FROM knowledge_profile WHERE id = ? AND user_id = ?",
+            (topic_id, user_id)
+        )
+        row = cur.fetchone()
+    return _topic_row_to_dict(row) if row else None
+
+def update_ema(topic_id: int, user_id: int, score: float) -> Optional[dict]:
+    """Record a manual review score (0.0-1.0) for a topic and advance its review schedule.
+
+    Unlike update_topic_performance (driven by individual quiz answers), this sets the
+    EMA directly from a normalized score, e.g. update_ema(topic_id, user_id, score_out_of_10 / 10).
+    Returns the updated topic dict, or None if no such topic exists for this user.
+    """
+    with get_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT correct, total, ema_score, review_count FROM knowledge_profile WHERE id = ? AND user_id = ?",
+            (topic_id, user_id)
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+
+        prev_ema = row["ema_score"] if row["ema_score"] is not None else 0.0
+        new_ema = (score * _EMA_ALPHA) + (prev_ema * (1 - _EMA_ALPHA))
+        total_val = row["total"] + 1
+        correct_val = row["correct"] + (1 if score >= 0.5 else 0)
+        new_review_count = (row["review_count"] or 0) + 1
+
+        now = datetime.now()
+        next_review_date = scheduler.calculate_next_review_date(new_ema, new_review_count, now)
+        review_interval_days = (next_review_date - now).days
+
+        cur.execute(
+            """
+            UPDATE knowledge_profile
+            SET correct = ?, total = ?, ema_score = ?, last_reviewed_at = ?,
+                review_interval_days = ?, review_count = ?, next_review_date = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+            """,
+            (
+                correct_val, total_val, new_ema, now,
+                review_interval_days, new_review_count, next_review_date,
+                topic_id, user_id
+            )
+        )
+        conn.commit()
+
+    return get_topic_by_id(topic_id, user_id)
+
+def get_topic_statistics(user_id: int) -> dict:
+    """Return dashboard-level stats summarizing a user's spaced-repetition progress."""
+    topics = list_topics_with_schedule(user_id)
+    if not topics:
+        return {
+            "total_topics": 0,
+            "topics_due": 0,
+            "topics_overdue": 0,
+            "avg_mastery": 0.0,
+            "strongest_topic": None,
+            "strongest_mastery": None,
+            "weakest_topic": None,
+            "weakest_mastery": None,
+        }
+
+    topics_due = sum(1 for t in topics if t["is_due"])
+    topics_overdue = sum(1 for t in topics if t["days_until_review"] < 0)
+    avg_mastery = round(sum(t["mastery_level"] for t in topics) / len(topics), 3)
+    strongest = max(topics, key=lambda t: t["mastery_level"])
+    weakest = min(topics, key=lambda t: t["mastery_level"])
+
+    return {
+        "total_topics": len(topics),
+        "topics_due": topics_due,
+        "topics_overdue": topics_overdue,
+        "avg_mastery": avg_mastery,
+        "strongest_topic": strongest["topic"],
+        "strongest_mastery": strongest["mastery_level"],
+        "weakest_topic": weakest["topic"],
+        "weakest_mastery": weakest["mastery_level"],
+    }
+
+def get_review_schedule(topic: str, user_id: int) -> dict:
+    """Return the spaced-repetition review schedule for a topic across all subjects.
+
+    Backward compatible: topics that predate spaced repetition (no reviews yet)
+    are reported as due today with a review_count of 0.
+    """
+    topic_key = topic.strip().title()
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT subject, topic, ema_score, correct, total, last_reviewed_at,
+                   review_interval_days, review_count, next_review_date
+            FROM knowledge_profile
+            WHERE user_id = ? AND topic = ?
+            """,
+            (user_id, topic_key)
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return {}
+
+    ema_score = row["ema_score"]
+    mastery_level = ema_score if ema_score is not None else (
+        row["correct"] / row["total"] if row["total"] else 0.0
+    )
+    last_reviewed_at = _parse_ts(row["last_reviewed_at"])
+    next_review_date = _parse_ts(row["next_review_date"])
+    days_until_review = (next_review_date.date() - datetime.now().date()).days if next_review_date else 0
+
+    return {
+        "topic": row["topic"],
+        "mastery_level": mastery_level,
+        "mastery_category": scheduler.get_mastery_category(mastery_level),
+        "last_reviewed": last_reviewed_at.date().isoformat() if last_reviewed_at else None,
+        "next_review": next_review_date.date().isoformat() if next_review_date else None,
+        "days_until_review": days_until_review,
+        "review_count": row["review_count"] or 0,
+    }

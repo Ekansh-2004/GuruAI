@@ -1,7 +1,7 @@
 import os
 import json
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request, Response, status
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request, Response, status, Query
 from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -436,6 +436,87 @@ def delete_profile_topic(subject: str, topic: str, user_id: int = Depends(get_cu
     """Permanently remove a topic from the student's global knowledge profile."""
     tracker.delete_topic(user_id, subject, topic)
     return {"status": "deleted", "subject": subject, "topic": topic}
+
+# ── Spaced Repetition (SRS) ──
+@app.get("/api/suggestions/review-queue")
+def get_review_queue(
+    category: str = Query("all", pattern="^(all|weak|average|strong)$"),
+    limit: int = Query(10, ge=1, le=50),
+    sort: str = Query("urgent", pattern="^(urgent|recent)$"),
+    user_id: int = Depends(get_current_user),
+) -> dict:
+    """Return topics due for review today or earlier.
+
+    category filters by mastery_category ('weak'/'average'/'strong'), sort picks
+    between soonest-due-first ('urgent') and most-recently-studied-first ('recent').
+    """
+    topics = tracker.list_topics_with_schedule(user_id)
+    due_topics = [t for t in topics if t["is_due"]]
+
+    if category != "all":
+        due_topics = [t for t in due_topics if t["mastery_category"].lower() == category]
+
+    if sort == "urgent":
+        due_topics.sort(key=lambda t: t["days_until_review"])
+    else:
+        due_topics.sort(key=lambda t: t["last_reviewed"] or "", reverse=True)
+
+    overdue_count = sum(1 for t in topics if t["days_until_review"] < 0)
+
+    queue = [
+        {
+            "id": t["id"],
+            "topic": t["topic"],
+            "mastery_level": t["mastery_level"],
+            "mastery_category": t["mastery_category"],
+            "days_until_review": t["days_until_review"],
+            "last_reviewed": t["last_reviewed"],
+            "next_review": t["next_review"],
+            "review_count": t["review_count"],
+            "urgency_score": t["urgency_score"],
+        }
+        for t in due_topics[:limit]
+    ]
+
+    return {
+        "queue": queue,
+        "total_topics": len(topics),
+        "overdue_count": overdue_count,
+    }
+
+class MarkReviewedRequest(BaseModel):
+    score: int
+    notes: Optional[str] = None
+
+@app.post("/api/topics/{topic_id}/mark-reviewed")
+def mark_topic_reviewed(
+    topic_id: int,
+    req: MarkReviewedRequest,
+    user_id: int = Depends(get_current_user),
+) -> dict:
+    """Record a study session for a topic: updates its mastery EMA and spaced-repetition schedule.
+
+    score is 0-10. notes is accepted for future use but is not currently persisted
+    (knowledge_profile has no notes column).
+    """
+    if not (0 <= req.score <= 10):
+        raise HTTPException(status_code=400, detail="score must be between 0 and 10")
+
+    updated = tracker.update_ema(topic_id, user_id, req.score / 10)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Topic not found")
+
+    return {
+        "topic": updated["topic"],
+        "mastery_updated": updated["mastery_level"],
+        "next_review": updated["next_review"],
+        "message": "Great! Study session recorded.",
+    }
+
+@app.get("/api/topics/statistics")
+def get_topics_statistics(user_id: int = Depends(get_current_user)) -> dict:
+    """Return dashboard stats summarizing the user's spaced-repetition progress."""
+    return tracker.get_topic_statistics(user_id)
 
 # ── User Subjects ──
 class SubjectRequest(BaseModel):

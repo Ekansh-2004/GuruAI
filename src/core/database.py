@@ -64,6 +64,10 @@ def init_db():
         correct INTEGER DEFAULT 0,
         total INTEGER DEFAULT 0,
         ema_score REAL,
+        last_reviewed_at TIMESTAMP DEFAULT NULL,
+        review_interval_days INTEGER DEFAULT 1,
+        review_count INTEGER DEFAULT 0,
+        next_review_date TIMESTAMP DEFAULT NULL,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
         UNIQUE(user_id, subject, topic)
