@@ -817,6 +817,12 @@
                     <span class="material-symbols-outlined">psychology</span>
                     My Memory
                 </div>
+                <div id="nav-progress"
+                    class="text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium"
+                    onclick="switchView('progress')">
+                    <span class="material-symbols-outlined">trending_up</span>
+                    Review &amp; Progress
+                </div>
 
                 <div class="pt-6 pb-2 px-6">
                     <p class="text-[10px] uppercase tracking-widest text-[#f6f3f5]/40 font-bold">Past Sessions</p>
@@ -919,6 +925,23 @@
                         </div>
                         <p class="text-[10px] text-on-surface-variant/40 text-center mt-2">Your preferences apply to all study sessions automatically</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── Review & Progress View (hidden by default) ── -->
+            <div id="progress-view" class="hidden flex-col h-full">
+                <div class="bg-[#0e0e10]/80 backdrop-blur-xl w-full h-16 flex items-center gap-4 px-8 border-b border-outline-variant/10 flex-shrink-0">
+                    <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1">trending_up</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm text-on-surface">Review &amp; Progress</p>
+                        <p class="text-[10px] text-on-surface-variant">Your spaced-repetition schedule and mastery stats</p>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto px-8 py-6">
+                    <div id="srs-stats-container" class="mb-6"></div>
+                    <div id="review-queue-container" class="mb-6"></div>
                 </div>
             </div>
 
@@ -1042,6 +1065,11 @@
             </section>
         </aside>
     </div>
+
+    <!-- Spaced Repetition (SRS) widgets -->
+    <script src="/static/widgets/review-queue.js"></script>
+    <script src="/static/widgets/study-tracker.js"></script>
+    <script src="/static/widgets/srs-stats.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -1614,28 +1642,37 @@
             // ── View Switcher ─────────────────────────────────────────
 
             window.switchView = function(view) {
-                const studyView  = document.getElementById("study-view");
-                const memoryView = document.getElementById("memory-view");
-                const navStudy   = document.getElementById("nav-study");
-                const navMemory  = document.getElementById("nav-memory");
-                const deletBtn   = document.getElementById("delete-session-btn");
+                const studyView    = document.getElementById("study-view");
+                const memoryView   = document.getElementById("memory-view");
+                const progressView = document.getElementById("progress-view");
+                const navStudy     = document.getElementById("nav-study");
+                const navMemory    = document.getElementById("nav-memory");
+                const navProgress  = document.getElementById("nav-progress");
+                const deletBtn     = document.getElementById("delete-session-btn");
+
+                const activeClass   = "bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer text-sm";
+                const inactiveClass = "text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium";
+
+                [studyView, memoryView, progressView].forEach((el) => {
+                    el.classList.add("hidden");
+                    el.classList.remove("flex");
+                });
+                [navStudy, navMemory, navProgress].forEach((el) => { el.className = inactiveClass; });
+                if (deletBtn) deletBtn.classList.add("hidden");
 
                 if (view === "memory") {
-                    studyView.classList.add("hidden");
-                    studyView.classList.remove("flex");
                     memoryView.classList.remove("hidden");
                     memoryView.classList.add("flex");
-                    navStudy.className  = "text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium";
-                    navMemory.className = "bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer text-sm";
-                    if (deletBtn) deletBtn.classList.add("hidden");
+                    navMemory.className = activeClass;
                     loadMemoryView();
+                } else if (view === "progress") {
+                    progressView.classList.remove("hidden");
+                    progressView.classList.add("flex");
+                    navProgress.className = activeClass;
                 } else {
-                    memoryView.classList.add("hidden");
-                    memoryView.classList.remove("flex");
                     studyView.classList.remove("hidden");
                     studyView.classList.add("flex");
-                    navMemory.className = "text-[#f6f3f5]/60 hover:text-[#f6f3f5] px-4 py-3 transition-colors hover:bg-[#1f1f22]/50 rounded-xl mx-2 flex items-center gap-3 cursor-pointer text-sm font-medium";
-                    navStudy.className  = "bg-[#1f1f22] text-[#d095ff] rounded-xl mx-2 px-4 py-3 font-semibold flex items-center gap-3 cursor-pointer text-sm";
+                    navStudy.className = activeClass;
                     if (deletBtn) deletBtn.classList.remove("hidden");
                 }
             };
@@ -1803,6 +1840,17 @@
             }
 
             init();
+
+            // ── Spaced Repetition (SRS) widgets ──
+            // initSrsStatsWidget/initReviewQueueWidget mount into their containers,
+            // do the initial fetch, and set up their own auto-refresh intervals
+            // (5 min / 10 min respectively) — see static/widgets/*.js.
+            if (typeof window.initSrsStatsWidget === "function") {
+                window.initSrsStatsWidget("srs-stats-container");
+            }
+            if (typeof window.initReviewQueueWidget === "function") {
+                window.initReviewQueueWidget("review-queue-container");
+            }
         });
 
         /* ── Light / Dark Mode Toggle ── */
@@ -1848,6 +1896,7 @@
             const navItems = [
                 { el: document.getElementById('nav-study'),  active: true  },
                 { el: document.getElementById('nav-memory'), active: false },
+                { el: document.getElementById('nav-progress'), active: false },
                 { el: document.querySelector('aside nav a[href="/knowledge.html"]'), active: false },
                 { el: document.querySelector('aside nav a[href*="knowledge"]'), active: false },
             ];
@@ -1873,8 +1922,9 @@
                 newEl.style.color = base.color;
                 newEl.style.transition = 'background-color 0.18s ease, color 0.12s ease, transform 0.15s ease';
                 // Restore onclick
-                if (newEl.id === 'nav-study')  newEl.onclick = () => switchView('study');
-                if (newEl.id === 'nav-memory') newEl.onclick = () => switchView('memory');
+                if (newEl.id === 'nav-study')    newEl.onclick = () => switchView('study');
+                if (newEl.id === 'nav-memory')   newEl.onclick = () => switchView('memory');
+                if (newEl.id === 'nav-progress') newEl.onclick = () => switchView('progress');
 
                 newEl.addEventListener('mouseenter', () => {
                     if (document.documentElement.getAttribute('data-theme') !== 'light') return;
@@ -1897,6 +1947,9 @@
             _indexPatch(document.documentElement.getAttribute('data-theme') === 'light');
         });
     </script>
+
+    <!-- Study Tracker Modal - hidden initially, populated by showStudyTracker() on "Study Now" click -->
+    <div id="study-tracker-modal-container"></div>
 </body>
 
 <!-- ── Sources Drawer ─────────────────────────────────────────────────── -->

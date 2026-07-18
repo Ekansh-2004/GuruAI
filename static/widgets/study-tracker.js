@@ -124,7 +124,10 @@
                     </div>
                 </div>
             `;
-            document.body.appendChild(backdrop);
+            // Mount into #study-tracker-modal-container if the host page defines one,
+            // otherwise fall back to <body> (position:fixed makes the parent irrelevant visually).
+            const mountPoint = document.getElementById("study-tracker-modal-container") || document.body;
+            mountPoint.appendChild(backdrop);
 
             // Animate in on the next frame so the transition classes actually apply.
             const raf = window.requestAnimationFrame || ((cb) => setTimeout(cb, 16));

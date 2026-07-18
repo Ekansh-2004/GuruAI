@@ -119,7 +119,7 @@
         lastUpdated = new Date();
 
         const queue = (data && data.queue) || [];
-        const total = data && typeof data.total_topics === "number" ? data.total_topics : queue.length;
+        const dueCount = queue.length;
         const overdue = data && typeof data.overdue_count === "number" ? data.overdue_count : 0;
 
         const listHtml = queue.length
@@ -136,7 +136,7 @@
                 <div class="px-5 py-4 border-b border-outline-variant/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                     <div class="min-w-0">
                         <h3 class="text-on-surface font-semibold text-base">Topics to Review Today</h3>
-                        <p class="text-on-surface-variant text-xs mt-0.5">${total} topic${total === 1 ? "" : "s"} due, ${overdue} overdue</p>
+                        <p class="text-on-surface-variant text-xs mt-0.5">${dueCount} topic${dueCount === 1 ? "" : "s"} due, ${overdue} overdue</p>
                     </div>
                     <span id="review-queue-updated" class="text-on-surface-variant/60 text-[11px] flex-shrink-0">${formatMinutesAgo(lastUpdated)}</span>
                 </div>
