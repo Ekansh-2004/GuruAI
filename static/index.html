@@ -988,6 +988,7 @@
                                     <span class="material-symbols-outlined text-[16px]">attach_file</span>
                                     Add context
                                     <input id="file-input" type="file" accept=".pdf,.txt,.docx" multiple class="hidden"
+                                        title="You can select multiple PDF, DOCX or TXT files at once"
                                         onchange="uploadAndBuild()" />
                                 </label>
                                 <button onclick="generateQuiz()"
@@ -1040,7 +1041,22 @@
                         </button>
                     </div>
                 </div>
+                <div id="upload-progress-list" class="space-y-2 mb-3 hidden">
+                </div>
                 <div id="active-documents-list" class="space-y-3">
+                </div>
+                <div id="doc-drop-zone"
+                    class="mt-4 p-6 rounded-2xl border border-dashed border-outline-variant/30 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:bg-surface-container-high/50 transition-colors"
+                    onclick="document.getElementById('file-input').click()">
+                    <div
+                        class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+                        <span class="material-symbols-outlined">upload_file</span>
+                    </div>
+                    <div>
+                        <p class="text-sm font-bold text-on-surface/80">Drop documents here</p>
+                        <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-1">PDF,
+                            DOCX, TXT &middot; multiple allowed</p>
+                    </div>
                 </div>
             </section>
 
@@ -1095,6 +1111,7 @@
                 loadDocuments(activeSessionId);
                 loadSubjects();
                 loadUserName();
+                setupDocDropZone();
             }
 
             async function loadUserName() {
@@ -1332,36 +1349,210 @@
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
             });
 
+            // Escape user-controlled text (filenames, backend error strings) before it goes into innerHTML.
+            function escapeHtml(str) {
+                const div = document.createElement("div");
+                div.textContent = str ?? "";
+                return div.innerHTML;
+            }
+
+            // POST with progress via XHR — fetch() has no upload-progress event, so multi-file
+            // batches (which can take a while over slow connections) would otherwise show nothing
+            // moving until the whole request finishes.
+            function uploadWithProgress(url, formData, onProgress) {
+                return new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open("POST", url);
+                    xhr.upload.onprogress = (e) => {
+                        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+                    };
+                    xhr.onload = () => {
+                        let body = {};
+                        try { body = JSON.parse(xhr.responseText); } catch (_) { /* non-JSON error page */ }
+                        resolve({ status: xhr.status, body });
+                    };
+                    xhr.onerror = () => reject(new Error("Network error"));
+                    xhr.send(formData);
+                });
+            }
+
+            // ── Transient "this batch's" upload/processing status panel ──
+            // Backend from Prompt 1 reports final per-file status (ready/failed + chunk_count/error)
+            // synchronously in the /upload response body — there's no background job to poll, so
+            // "live" status here means: real upload-progress while bytes are in flight (XHR), then an
+            // immediate per-file ready/failed reconciliation once the response comes back. The
+            // authoritative Active Documents list below is always refreshed from the server after,
+            // so this panel only needs to hold state for the few seconds a user watches an upload go.
+            const uploadRowEls = new Map();
+            let uploadClearTimer = null;
+
+            function resetUploadPanel() {
+                if (uploadClearTimer) { clearTimeout(uploadClearTimer); uploadClearTimer = null; }
+                const panel = document.getElementById("upload-progress-list");
+                if (panel) { panel.innerHTML = ""; panel.classList.add("hidden"); }
+                uploadRowEls.clear();
+            }
+
+            function renderUploadRow(filename, info) {
+                const panel = document.getElementById("upload-progress-list");
+                if (!panel) return;
+                panel.classList.remove("hidden");
+
+                let row = uploadRowEls.get(filename);
+                if (!row) {
+                    row = document.createElement("div");
+                    row.className = "px-4 py-2.5 bg-surface-container-high rounded-xl flex items-center gap-3";
+                    panel.appendChild(row);
+                    uploadRowEls.set(filename, row);
+                }
+
+                let iconHtml, statusHtml;
+                if (info.state === "uploading") {
+                    iconHtml = `<span class="material-symbols-outlined animate-spin text-primary text-[18px]">progress_activity</span>`;
+                    statusHtml = `<div class="h-1 rounded-full bg-surface-container-highest overflow-hidden mt-1.5">
+                        <div class="h-full bg-primary transition-all" style="width:${info.progress ?? 0}%"></div>
+                    </div>`;
+                } else if (info.state === "processing") {
+                    iconHtml = `<span class="material-symbols-outlined animate-spin text-secondary text-[18px]">progress_activity</span>`;
+                    statusHtml = `<p class="text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">Processing…</p>`;
+                } else if (info.state === "ready") {
+                    iconHtml = `<span class="material-symbols-outlined text-tertiary text-[18px]">check_circle</span>`;
+                    statusHtml = `<p class="text-[10px] text-tertiary uppercase font-bold tracking-tighter">Ready &middot; ${info.chunkCount ?? 0} chunks</p>`;
+                } else {
+                    iconHtml = `<span class="material-symbols-outlined text-error text-[18px]">error</span>`;
+                    const msg = info.message || "Failed";
+                    statusHtml = `<p class="text-[10px] text-error font-bold truncate" title="${escapeHtml(msg)}">${escapeHtml(msg)}</p>`;
+                }
+
+                row.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">${iconHtml}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-on-surface truncate">${escapeHtml(filename)}</p>
+                        ${statusHtml}
+                    </div>
+                `;
+            }
+
+            function scheduleUploadPanelClear(delay = 4000) {
+                if (uploadClearTimer) clearTimeout(uploadClearTimer);
+                uploadClearTimer = setTimeout(resetUploadPanel, delay);
+            }
+
+            const ALLOWED_UPLOAD_EXTENSIONS = [".pdf", ".txt", ".docx"];
+
+            async function uploadFiles(files) {
+                if (!activeSessionId || !files || !files.length) return;
+                resetUploadPanel();
+
+                // Client-side extension guard, mirroring the file input's `accept` attribute —
+                // catches drag-and-drop, which bypasses `accept`. Rejected files never touch the
+                // network; the backend still validates independently for anything that slips through.
+                const accepted = [];
+                const rejected = [];
+                files.forEach((f) => {
+                    const ext = "." + (f.name.split(".").pop() || "").toLowerCase();
+                    (ALLOWED_UPLOAD_EXTENSIONS.includes(ext) ? accepted : rejected).push(f);
+                });
+                rejected.forEach((f) => renderUploadRow(f.name, {
+                    state: "failed",
+                    message: `Unsupported file type — only ${ALLOWED_UPLOAD_EXTENSIONS.join(", ")} allowed`,
+                }));
+
+                if (!accepted.length) {
+                    scheduleUploadPanelClear();
+                    return;
+                }
+
+                accepted.forEach((f) => renderUploadRow(f.name, { state: "uploading", progress: 0 }));
+
+                const form = new FormData();
+                accepted.forEach((f) => form.append("files", f));
+
+                const statusEl = document.getElementById("db-status");
+                if (statusEl) statusEl.textContent = `⏳ UPLOADING ${accepted.length} FILE${accepted.length > 1 ? "S" : ""}...`;
+
+                try {
+                    const { status: httpStatus, body: res } = await uploadWithProgress(
+                        `${API}/api/sessions/${activeSessionId}/upload`,
+                        form,
+                        (pct) => {
+                            accepted.forEach((f) => renderUploadRow(f.name, { state: "uploading", progress: pct }));
+                            if (statusEl) statusEl.textContent = `⏳ UPLOADING… ${pct}%`;
+                        }
+                    );
+
+                    if (httpStatus >= 400) {
+                        // Whole-batch failure (e.g. none of the files had any readable text at all).
+                        const detail = res.detail || "Upload failed";
+                        accepted.forEach((f) => renderUploadRow(f.name, { state: "failed", message: detail }));
+                        if (statusEl) statusEl.textContent = "❌ UPLOAD FAILED";
+                        scheduleUploadPanelClear(8000);
+                        return;
+                    }
+
+                    if (statusEl) statusEl.textContent = "⏳ PROCESSING…";
+                    accepted.forEach((f) => renderUploadRow(f.name, { state: "processing" }));
+
+                    const perFile = res.documents || [];
+                    perFile.forEach((d) => {
+                        if (d.status === "ready") {
+                            renderUploadRow(d.filename, { state: "ready", chunkCount: d.chunk_count });
+                        } else {
+                            renderUploadRow(d.filename, { state: "failed", message: d.error || "Processing failed" });
+                        }
+                    });
+
+                    const readyCount = perFile.filter((d) => d.status === "ready").length;
+                    const failedCount = perFile.length - readyCount;
+                    if (statusEl) {
+                        statusEl.textContent = failedCount > 0
+                            ? `⚠️ ${readyCount} READY · ${failedCount} FAILED`
+                            : `✅ DATABASE READY (${res.doc_count} CHUNKS)`;
+                    }
+                    scheduleUploadPanelClear(failedCount > 0 ? 8000 : 3000);
+                } catch (e) {
+                    accepted.forEach((f) => renderUploadRow(f.name, { state: "failed", message: "Network error — please retry" }));
+                    if (statusEl) statusEl.textContent = "❌ UPLOAD FAILED";
+                    scheduleUploadPanelClear(8000);
+                } finally {
+                    // The Active Documents list is the source of truth — always resync it from the
+                    // server, whether this batch fully succeeded, partially failed, or errored out.
+                    loadDocuments(activeSessionId);
+                }
+            }
+
             window.uploadAndBuild = async function () {
                 const fileInput = document.getElementById("file-input");
                 if (!fileInput || !fileInput.files.length) return;
-                const form = new FormData();
-                Array.from(fileInput.files).forEach((f) => form.append("files", f));
-
-                const statusEl = document.getElementById("db-status");
-                if (statusEl) statusEl.textContent = "⏳ PROCESSING...";
-
-                try {
-                    const response = await fetch(`${API}/api/sessions/${activeSessionId}/upload`, {
-                        method: "POST", body: form,
-                    });
-                    const res = await response.json();
-                    
-                    if (!response.ok) {
-                        alert(res.detail || "Upload failed");
-                        if (statusEl) statusEl.textContent = "❌ UPLOAD FAILED";
-                        return;
-                    }
-                    
-                    if (statusEl) statusEl.textContent = `✅ DATABASE READY (${res.doc_count} CHUNKS)`;
-
-                    // Refresh documents list after successful upload
-                    loadDocuments(activeSessionId);
-
-                } catch (e) {
-                    if (statusEl) statusEl.textContent = "❌ UPLOAD FAILED";
-                }
+                const files = Array.from(fileInput.files);
+                fileInput.value = ""; // allow re-selecting the same file(s) later
+                await uploadFiles(files);
             };
+
+            function setupDocDropZone() {
+                const dropZone = document.getElementById("doc-drop-zone");
+                if (!dropZone) return;
+
+                ["dragenter", "dragover"].forEach((evt) => dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.add("border-primary", "bg-surface-container-high/50");
+                }));
+                ["dragleave", "drop"].forEach((evt) => dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.classList.remove("border-primary", "bg-surface-container-high/50");
+                }));
+                dropZone.addEventListener("drop", (e) => {
+                    const files = Array.from(e.dataTransfer?.files || []);
+                    if (files.length) uploadFiles(files);
+                });
+
+                // Prevent a stray drop just outside the zone from navigating the browser away.
+                ["dragover", "drop"].forEach((evt) => window.addEventListener(evt, (e) => {
+                    if (!e.target.closest("#doc-drop-zone")) e.preventDefault();
+                }));
+            }
 
             async function checkDbStatus(sessionId) {
                 const res = await fetch(`${API}/api/sessions/${sessionId}/db-status`).then((r) => r.json());
@@ -1369,7 +1560,10 @@
                 if (statusEl) statusEl.textContent = res.exists ? "✅ AI SYNCED WITH DATABASE" : "⚠️ NO DATABASE — UPLOAD DOCUMENTS";
             }
 
-            // New function to dynamically load and render active documents
+            const FILE_TYPE_ICONS = { pdf: "picture_as_pdf", docx: "description", txt: "article" };
+
+            // Load and render the session's documents (the authoritative, server-persisted list —
+            // includes both ready and failed documents per Prompt 1's per-file status tracking).
             async function loadDocuments(sessionId) {
                 const list = document.getElementById("active-documents-list");
                 const badge = document.getElementById("doc-count-badge");
@@ -1388,35 +1582,28 @@
                     docs.forEach(doc => {
                         const sizeMB = (doc.size / (1024 * 1024)).toFixed(1);
                         const sizeStr = sizeMB >= 0.1 ? `${sizeMB}MB` : `${(doc.size / 1024).toFixed(1)}KB`;
+                        const isFailed = doc.status === "failed";
+                        const icon = FILE_TYPE_ICONS[doc.file_type] || "draft";
 
                         const div = document.createElement("div");
-                        div.className = "p-4 bg-surface-container-high rounded-full border-l-4 border-secondary flex items-center gap-4 group cursor-pointer hover:bg-surface-bright transition-all";
+                        div.className = `p-4 bg-surface-container-high rounded-full border-l-4 ${isFailed ? "border-error" : "border-secondary"} flex items-center gap-4 group cursor-pointer hover:bg-surface-bright transition-all`;
+                        if (isFailed && doc.error) div.title = doc.error;
+
+                        const statusLine = isFailed
+                            ? `FAILED${doc.error ? " &middot; " + escapeHtml(doc.error) : ""}`
+                            : `READY &middot; ${doc.chunk_count ?? 0} CHUNKS &middot; ${sizeStr}`;
+
                         div.innerHTML = `
-                <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
-                  <span class="material-symbols-outlined">description</span>
+                <div class="w-10 h-10 rounded-full ${isFailed ? "bg-error/10 text-error" : "bg-secondary/10 text-secondary"} flex items-center justify-center">
+                  <span class="material-symbols-outlined">${isFailed ? "error_outline" : icon}</span>
                 </div>
                 <div class="flex-1 overflow-hidden">
-                  <p class="text-sm font-bold text-on-surface truncate">${doc.name}</p>
-                  <p class="text-[10px] text-on-surface-variant uppercase font-bold tracking-tighter">ANALYZED • ${sizeStr}</p>
+                  <p class="text-sm font-bold text-on-surface truncate">${escapeHtml(doc.name)}</p>
+                  <p class="text-[10px] ${isFailed ? "text-error" : "text-on-surface-variant"} uppercase font-bold tracking-tighter truncate">${statusLine}</p>
                 </div>
               `;
                         list.appendChild(div);
                     });
-
-                    // Render the dashed "Drop documents here" area at the bottom
-                    const dropArea = document.createElement("div");
-                    dropArea.className = "mt-4 p-6 rounded-2xl border border-dashed border-outline-variant/30 flex flex-col items-center justify-center text-center gap-2 cursor-pointer hover:bg-surface-container-high/50 transition-colors";
-                    dropArea.onclick = () => document.getElementById("file-input").click(); // Triggers existing file input
-                    dropArea.innerHTML = `
-                <div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
-                  <span class="material-symbols-outlined">upload_file</span>
-                </div>
-                <div>
-                  <p class="text-sm font-bold text-on-surface/80">Drop documents here</p>
-                  <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mt-1">PDF, DOCX, TXT</p>
-                </div>
-            `;
-                    list.appendChild(dropArea);
 
                 } catch (e) {
                     console.error("Failed to load documents", e);

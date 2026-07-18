@@ -201,7 +201,7 @@ def get_session_documents(session_id: str) -> list:
         cur = conn.cursor()
         cur.execute(
             "SELECT doc_id, name, size, file_type, status, storage_path, chunk_count, error, created_at "
-            "FROM documents WHERE session_id = ?",
+            "FROM documents WHERE session_id = ? ORDER BY id ASC",
             (session_id,)
         )
         return [
