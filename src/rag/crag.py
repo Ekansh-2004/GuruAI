@@ -15,6 +15,7 @@ Two public helpers are exposed:
       sources_metadata is a list of dicts with keys: type, title, snippet, url.
 """
 
+import os
 from typing import List, Tuple
 from langchain_core.documents import Document
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -148,8 +149,20 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str, list]:
 
     Returns:
         (context_text, source_label, sources_metadata)
-        sources_metadata is a list of dicts:
-            { "type": "textbook"|"web", "title": str, "snippet": str, "url": str|None }
+        sources_metadata is a list of dicts, one per distinct (document, page)
+        actually cited:
+            {
+                "type": "textbook"|"web"|"general",
+                "document_id": str|None,   # matches the id from the /upload response
+                "filename": str|None,      # original filename, not a tmp path
+                "page": int|None,          # 1-indexed, None if the source type has no pages
+                "title": str,              # human-readable label, e.g. "notes.pdf · Page 2"
+                "snippet": str,
+                "url": str|None,
+            }
+        context_text embeds a "[Source: <title>]" tag before each chunk so the
+        answer-generation step can cite documents by name inline rather than
+        just "the textbook".
     """
     raw_docs: List[Document] = retriever.invoke(question)
     print(f"[CRAG] Retrieved {len(raw_docs)} docs, grading now …")
@@ -160,24 +173,35 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str, list]:
     print(f"[CRAG] Kept {kept}/{total} docs after Gemini grading.")
 
     if relevant_docs:
-        context = "\n\n".join(doc.page_content for doc in relevant_docs)
         source_label = "[Textbook]"
-        # Build metadata from LangChain Document.metadata (source filename + page)
+        context_blocks = []
         sources_metadata = []
+        seen_keys = set()
         for doc in relevant_docs:
             meta  = doc.metadata or {}
             fname = meta.get("source", "Textbook")
             # Normalise to just the basename so we don't leak full server paths
-            import os as _os
-            fname = _os.path.basename(fname) if fname else "Textbook"
-            page  = meta.get("page")
-            title = f"{fname} · Page {page + 1}" if page is not None else fname
-            sources_metadata.append({
-                "type":    "textbook",
-                "title":   title,
-                "snippet": doc.page_content[:300],
-                "url":     None,
-            })
+            fname = os.path.basename(fname) if fname else "Textbook"
+            page_zero_indexed = meta.get("page")
+            page = page_zero_indexed + 1 if page_zero_indexed is not None else None
+            document_id = meta.get("document_id")
+            title = f"{fname} · Page {page}" if page is not None else fname
+
+            context_blocks.append(f"[Source: {title}]\n{doc.page_content}")
+
+            dedup_key = (document_id, page)
+            if dedup_key not in seen_keys:
+                seen_keys.add(dedup_key)
+                sources_metadata.append({
+                    "type":        "textbook",
+                    "document_id": document_id,
+                    "filename":    fname,
+                    "page":        page,
+                    "title":       title,
+                    "snippet":     doc.page_content[:300],
+                    "url":         None,
+                })
+        context = "\n\n".join(context_blocks)
     else:
         print("[CRAG] ❌ All docs graded IRRELEVANT. Triggering Web Search fallback...")
         web_context, web_results = _web_search(question)
@@ -187,10 +211,13 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str, list]:
             source_label = "[Web Search]"
             sources_metadata = [
                 {
-                    "type":    "web",
-                    "title":   r.get("title", "Web Result"),
-                    "snippet": r.get("body", "")[:300],
-                    "url":     r.get("href", None),
+                    "type":        "web",
+                    "document_id": None,
+                    "filename":    None,
+                    "page":        None,
+                    "title":       r.get("title", "Web Result"),
+                    "snippet":     r.get("body", "")[:300],
+                    "url":         r.get("href", None),
                 }
                 for r in web_results
             ]

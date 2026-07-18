@@ -43,10 +43,12 @@ RESPONSE LENGTH RULES:
 - NO code unless explicitly requested.
 
 SOURCE LABELLING & CITATION:
-- Use [Textbook] if answering from provided textbook document context.
+- The Textbook Facts below are broken into blocks, each preceded by a "[Source: <filename>]" or "[Source: <filename>, Page <n>]" tag.
+- When your answer draws on a block, mention which document it came from naturally in the sentence (e.g., "According to ml_notes.pdf, ..." or "As db_notes.docx explains, ..."). Use the actual filename from its [Source: ...] tag — never say "the textbook" generically when a filename is available.
+- If the question draws on more than one document, attribute each fact to its correct document individually. Do not blend or merge attributions across documents.
 - Use [Web Search] if answering from web search results context.
 - Use [General knowledge] otherwise.
-- AT THE VERY END of your response, you MUST append a section titled "### Context/Sources Used:" and display the exact excerpts, comments, or URLs from the Textbook Facts or Web Search Results that you relied on to generate the answer. If you used General Knowledge, just state General Knowledge used."""
+- AT THE VERY END of your response, you MUST append a section titled "### Context/Sources Used:" listing each distinct filename (with page number, if applicable) or URL you actually relied on. If you used General Knowledge, just state General Knowledge used."""
 
     # ── 3. Adaptive depth ─────────────────────────────────────────────────────
     adaptive_section = ""
