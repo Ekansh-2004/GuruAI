@@ -6,6 +6,7 @@ GuruAI is a FastAPI + RAG tutoring system with:
 - Vector search (FAISS)
 - Quiz generation
 - Multi-user support with JWT auth
+- Space Repetition System
 
 ## Current Stack
 - **Backend**: FastAPI, Python 3.x
@@ -24,10 +25,13 @@ src/
 │   └── doc_loader.py    # PDF/DOCX processing
 ├── personalization/
 │   ├── mastery_tracker.py    # EMA algorithm
+│   ├── spaced_rep.py    
 │   └── user_memory.py        # Persistent memory system
 ├── auth/
 │   ├── auth.py          # JWT, bcrypt
 │   └── user.py          # User model
+├── migrations/
+|   └── add_spaced_repitions
 static/
 ├── index.html
 ├── style.css

@@ -50,8 +50,14 @@ def init_db():
     CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id TEXT NOT NULL,
+        doc_id TEXT,
         name TEXT NOT NULL,
         size INTEGER NOT NULL,
+        file_type TEXT,
+        status TEXT NOT NULL DEFAULT 'ready',
+        storage_path TEXT,
+        chunk_count INTEGER DEFAULT 0,
+        error TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY(session_id) REFERENCES sessions(id) ON DELETE CASCADE
     );

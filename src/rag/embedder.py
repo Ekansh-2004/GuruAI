@@ -28,11 +28,21 @@ def get_embeddings():
     return _embeddings
 
 def create_vectorstore(docs, session_id: str):
-    """Build FAISS index and save it permanently to the hard drive for the session."""
+    """Build or extend the FAISS index for a session and save it to disk.
+
+    If the session already has a vectorstore (e.g. a prior upload batch),
+    the new chunks are merged into it so multi-document sessions accumulate
+    instead of each upload call wiping out earlier documents.
+    """
     print("Generating local embeddings and saving to disk...")
     embeddings = get_embeddings()
-    vectorstore = FAISS.from_documents(docs, embeddings)
-    
+    existing = load_existing_vectorstore(session_id)
+    if existing is not None:
+        existing.add_documents(docs)
+        vectorstore = existing
+    else:
+        vectorstore = FAISS.from_documents(docs, embeddings)
+
     # Save the database locally using the absolute path
     db_path = get_db_path(session_id)
     os.makedirs(db_path, exist_ok=True)

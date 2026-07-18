@@ -160,12 +160,38 @@ def delete_session(session_id: str):
         except Exception as e:
             print(f"Error removing db folder: {e}")
 
-def add_document(session_id: str, filename: str, size: int):
-    """Save the uploaded document's metadata to the session in SQLite."""
+def add_document(
+    session_id: str,
+    doc_id: str,
+    filename: str,
+    size: int,
+    file_type: str,
+    status: str = "ready",
+    storage_path: Optional[str] = None,
+    chunk_count: int = 0,
+    error: Optional[str] = None,
+):
+    """Save/update an uploaded document's metadata for the session in SQLite.
+
+    Re-uploading a file with the same name in the same session updates its
+    existing row (new doc_id, status, chunk_count, etc.) rather than creating
+    a duplicate, matching the (session_id, name) uniqueness already in place.
+    """
     with get_db() as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO documents (session_id, name, size) VALUES (?, ?, ?)",
-            (session_id, filename, size)
+            """
+            INSERT INTO documents (session_id, doc_id, name, size, file_type, status, storage_path, chunk_count, error)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(session_id, name) DO UPDATE SET
+                doc_id = excluded.doc_id,
+                size = excluded.size,
+                file_type = excluded.file_type,
+                status = excluded.status,
+                storage_path = excluded.storage_path,
+                chunk_count = excluded.chunk_count,
+                error = excluded.error
+            """,
+            (session_id, doc_id, filename, size, file_type, status, storage_path, chunk_count, error)
         )
         conn.commit()
 
@@ -174,10 +200,24 @@ def get_session_documents(session_id: str) -> list:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT name, size FROM documents WHERE session_id = ?", 
+            "SELECT doc_id, name, size, file_type, status, storage_path, chunk_count, error, created_at "
+            "FROM documents WHERE session_id = ?",
             (session_id,)
         )
-        return [{"name": r["name"], "size": r["size"]} for r in cur.fetchall()]
+        return [
+            {
+                "doc_id": r["doc_id"],
+                "name": r["name"],
+                "size": r["size"],
+                "file_type": r["file_type"],
+                "status": r["status"],
+                "storage_path": r["storage_path"],
+                "chunk_count": r["chunk_count"],
+                "error": r["error"],
+                "created_at": r["created_at"],
+            }
+            for r in cur.fetchall()
+        ]
 
 def clear_session_knowledge_base(session_id: str):
     """Wipe FAISS files and document metadata from SQLite."""

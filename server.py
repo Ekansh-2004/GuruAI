@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request, Response, status, Query
 from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
@@ -10,7 +11,7 @@ from typing import List, Optional
 from langchain_core.messages import HumanMessage, AIMessage
 
 from src.rag.loader import load_documents
-from src.rag.embedder import create_vectorstore, load_existing_vectorstore
+from src.rag.embedder import create_vectorstore, load_existing_vectorstore, get_db_path
 from src.rag.chain import build_rag_chain
 from src.rag.quiz import generate_quiz_for_session_db
 from src.rag.topic_tutor import generate_topic_explanation, generate_topic_quiz
@@ -290,28 +291,60 @@ async def upload_and_build(
     files: List[UploadFile] = File(...),
     user_id: int = Depends(get_current_user)
 ):
+    """Upload one or more PDF/DOCX/TXT files into a session's shared knowledge base.
+
+    Each file is tracked as its own document (id, type, status, storage location)
+    and every resulting chunk is tagged with the document it came from (and page
+    number, for paginated file types) so retrieved content stays traceable to its
+    source. A file that fails to parse doesn't block the others in the same batch.
+    """
     verify_session_ownership(session_id, user_id)
-    file_data = []
+
+    all_docs = []
+    results = []
     for f in files:
         content = await f.read()
-        file_data.append((f.filename, content))
+        doc_id = str(uuid.uuid4())
+        file_type = os.path.splitext(f.filename)[1].lower().lstrip(".")
+        try:
+            chunks = load_documents([(f.filename, content, doc_id)])
+            if not chunks:
+                raise ValueError("No readable text extracted from this file")
 
-    docs = load_documents(file_data)
-    # docs contains clean list of chunks
-    if not docs:
+            tracker.add_document(
+                session_id, doc_id, f.filename, len(content), file_type,
+                status="ready", storage_path=get_db_path(session_id), chunk_count=len(chunks),
+            )
+            all_docs.extend(chunks)
+            results.append({
+                "doc_id": doc_id, "filename": f.filename, "file_type": file_type,
+                "status": "ready", "chunk_count": len(chunks),
+            })
+        except Exception as e:
+            tracker.add_document(
+                session_id, doc_id, f.filename, len(content), file_type,
+                status="failed", storage_path=None, chunk_count=0, error=str(e),
+            )
+            results.append({
+                "doc_id": doc_id, "filename": f.filename, "file_type": file_type,
+                "status": "failed", "error": str(e),
+            })
+
+    if not all_docs:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The uploaded file(s) contain no readable text. Please ensure they are not empty or scanned images without OCR."
+            detail="None of the uploaded file(s) contained readable text. Please ensure they are not empty or scanned images without OCR."
         )
-    vectorstore = create_vectorstore(docs, session_id) #transforms all the paragraphs into mathematical coordinates
-    tfidf_retriever = TFIDFRetriever.from_documents(docs)
+
+    # Merge the new chunks into the session's vectorstore (existing docs, if any, are kept)
+    vectorstore = create_vectorstore(all_docs, session_id) #transforms all the paragraphs into mathematical coordinates
+
+    # Rebuild the hybrid retriever over the FULL session docstore, not just this batch
+    full_docs = list(vectorstore.docstore._dict.values())
+    tfidf_retriever = TFIDFRetriever.from_documents(full_docs)
     _retriever_cache[session_id] = HybridRetriever(vectorstore=vectorstore, tfidf_retriever=tfidf_retriever, top_n=4)
 
-    # Register successfully processed documents
-    for name, content in file_data:
-        tracker.add_document(session_id, name, len(content))
-
-    return {"status": "database built", "doc_count": len(docs)}
+    return {"status": "database built", "doc_count": len(all_docs), "documents": results}
 
 @app.get("/api/sessions/{session_id}/documents")
 def get_documents(session_id: str, user_id: int = Depends(get_current_user)):
