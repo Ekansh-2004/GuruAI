@@ -27,7 +27,7 @@ from src.core.config import GOOGLE_API_KEY
 # ── Gemini grader model (lightweight flash for speed) ────────────────────────
 def _get_grader_model() -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+        model="gemini-flash-latest",
         google_api_key=GOOGLE_API_KEY,
         temperature=0,
         max_retries=2,
