@@ -420,7 +420,7 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
             yield "data: [DONE]\n\n"
         finally:
             if full_response:
-                tracker.add_message(req.session_id, "assistant", full_response)
+                tracker.add_message(req.session_id, "assistant", full_response, sources=sources_metadata)
 
     return StreamingResponse(
         generate(),

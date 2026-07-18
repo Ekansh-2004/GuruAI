@@ -289,6 +289,45 @@
             color: #d095ff;
         }
 
+        /* Per-source chips, shown below each AI answer that used retrieved context.
+           Each uploaded document gets a consistent color across the conversation
+           (assigned in JS, cycling through doc-chip-0..4); web/general sources
+           always use the same neutral "web" style since they aren't a session
+           document. Clicking a chip opens the Sources Drawer scoped to it. */
+        .source-chips-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.6rem;
+        }
+        .doc-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 0.28rem 0.65rem;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            max-width: 220px;
+        }
+        .doc-chip span.chip-label {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .doc-chip:hover { filter: brightness(1.15); }
+        .doc-chip .material-symbols-outlined { font-size: 12px; flex-shrink: 0; }
+        .doc-chip-0 { background: rgba(208,149,255,0.12); color: #d095ff; border-color: rgba(208,149,255,0.3); }
+        .doc-chip-1 { background: rgba(63,255,139,0.12); color: #3fff8b; border-color: rgba(63,255,139,0.3); }
+        .doc-chip-2 { background: rgba(255,184,77,0.14); color: #ffb84d; border-color: rgba(255,184,77,0.32); }
+        .doc-chip-3 { background: rgba(90,169,255,0.12); color: #5aa9ff; border-color: rgba(90,169,255,0.3); }
+        .doc-chip-4 { background: rgba(56,226,196,0.12); color: #38e2c4; border-color: rgba(56,226,196,0.3); }
+        .doc-chip.web { background: rgba(82,186,255,0.12); color: #52baff; border-color: rgba(82,186,255,0.3); }
+
         /* Light-mode overrides */
         html[data-theme="light"] #sources-drawer {
             background: #f5f3fa;
@@ -307,6 +346,12 @@
         html[data-theme="light"] .sources-trigger-btn { background: rgba(91,16,184,0.06); border-color: rgba(91,16,184,0.18); color: rgba(91,16,184,0.65); }
         html[data-theme="light"] .sources-trigger-btn.active,
         html[data-theme="light"] .sources-trigger-btn:hover { background: rgba(91,16,184,0.12); border-color: rgba(91,16,184,0.4); color: #5b10b8; }
+        html[data-theme="light"] .doc-chip-0 { background: rgba(91,16,184,0.08); color: #5b10b8; border-color: rgba(91,16,184,0.22); }
+        html[data-theme="light"] .doc-chip-1 { background: rgba(0,140,70,0.10); color: #007a3d; border-color: rgba(0,140,70,0.25); }
+        html[data-theme="light"] .doc-chip-2 { background: rgba(180,110,0,0.10); color: #a35a00; border-color: rgba(180,110,0,0.25); }
+        html[data-theme="light"] .doc-chip-3 { background: rgba(20,90,200,0.10); color: #1452c8; border-color: rgba(20,90,200,0.25); }
+        html[data-theme="light"] .doc-chip-4 { background: rgba(0,140,120,0.10); color: #007a68; border-color: rgba(0,140,120,0.25); }
+        html[data-theme="light"] .doc-chip.web { background: rgba(20,90,200,0.08); color: #1452c8; border-color: rgba(20,90,200,0.22); }
 
         /* Session buttons */
         .session-btn {
@@ -1173,13 +1218,79 @@
                 const feed = document.getElementById("chat-feed");
                 if (!feed) return;
                 feed.innerHTML = "";
+                resetDocColorMap();
                 msgs.forEach((m) => {
                     if (m.role === "quiz") {
                         feed.appendChild(buildQuizCard(m.content, true));
                     } else {
-                        appendBubble(m.role, m.content);
+                        appendBubble(m.role, m.content, m.sources);
                     }
                 });
+            }
+
+            // ── Per-document source chips ──
+            // Each uploaded document (identified by document_id from Prompt 2's CRAG
+            // metadata) keeps the same chip color for the lifetime of the currently
+            // displayed conversation, so a filename is visually recognizable across
+            // multiple answers even without re-reading the label. Web/general sources
+            // don't have a document_id and always render with the neutral "web" style.
+            const DOC_CHIP_PALETTE_SIZE = 5;
+            let docColorMap = new Map();
+
+            function resetDocColorMap() {
+                docColorMap = new Map();
+            }
+
+            function getDocChipClass(source) {
+                if (source.type !== "textbook" || !source.document_id) return "doc-chip web";
+                if (!docColorMap.has(source.document_id)) {
+                    docColorMap.set(source.document_id, docColorMap.size % DOC_CHIP_PALETTE_SIZE);
+                }
+                return `doc-chip doc-chip-${docColorMap.get(source.document_id)}`;
+            }
+
+            function sourceChipLabel(source) {
+                if (source.type !== "textbook") return source.title || "Web result";
+                return source.page ? `${source.filename} · p.${source.page}` : source.filename;
+            }
+
+            // Renders one small badge per retrieved source below an AI answer — filename
+            // (+ page, if the file type has one), color-coded per document. Clicking a
+            // chip opens the existing Sources Drawer scoped to just that excerpt; a
+            // "View all" chip appears too when more than one source was used.
+            function renderSourceChips(wrapper, sources) {
+                if (!sources || sources.length === 0) return;
+                const row = document.createElement("div");
+                row.className = "source-chips-row";
+
+                sources.forEach((s) => {
+                    const chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = getDocChipClass(s);
+                    chip.title = "Click to view this excerpt";
+                    const icon = s.type === "textbook" ? "description" : "language";
+                    chip.innerHTML = `<span class="material-symbols-outlined">${icon}</span><span class="chip-label">${escapeHtml(sourceChipLabel(s))}</span>`;
+                    chip.onclick = (e) => {
+                        e.stopPropagation();
+                        window.openSources([s], chip);
+                    };
+                    row.appendChild(chip);
+                });
+
+                if (sources.length > 1) {
+                    const allBtn = document.createElement("button");
+                    allBtn.type = "button";
+                    allBtn.className = "sources-trigger-btn";
+                    allBtn.style.marginTop = "0";
+                    allBtn.innerHTML = `<span class="material-symbols-outlined" style="font-size:11px;vertical-align:-1px">travel_explore</span>&nbsp;View all (${sources.length})`;
+                    allBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        window.openSources(sources, allBtn);
+                    };
+                    row.appendChild(allBtn);
+                }
+
+                wrapper.appendChild(row);
             }
 
             function appendBubble(role, content, sources) {
@@ -1201,10 +1312,8 @@
                 wrapper.appendChild(label);
                 wrapper.appendChild(bubble);
 
-                // Attach Sources button for AI messages that have sources
-                if (role === "assistant" && sources && sources.length > 0 && window._attachSourcesBtn) {
-                    _attachSourcesBtn(wrapper, sources);
-                }
+                // Attach per-document source chips for AI messages that have sources
+                if (role === "assistant") renderSourceChips(wrapper, sources);
 
                 feed.appendChild(wrapper);
                 feed.scrollTop = feed.scrollHeight;
@@ -1312,7 +1421,7 @@
                     feed.scrollTop = feed.scrollHeight;
 
                     // Attach Sources hover button to the wrapper
-                    if (window._attachSourcesBtn) _attachSourcesBtn(wrapper, lastSources);
+                    renderSourceChips(wrapper, lastSources);
 
                     const sessions = await fetch(`${API}/api/sessions`).then((r) => r.json());
                     renderSessions(sessions);
@@ -2229,19 +2338,6 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
         }
-
-        // Expose helper for the chat sender to call after streaming
-        window._attachSourcesBtn = function (wrapper, sources) {
-            if (!sources || sources.length === 0) return;
-            const btn = document.createElement('button');
-            btn.className = 'sources-trigger-btn';
-            btn.innerHTML = `<span class="material-symbols-outlined" style="font-size:11px;vertical-align:-1px">travel_explore</span>&nbsp;View Sources (${sources.length})`;
-            btn.onclick = function (e) {
-                e.stopPropagation();
-                openSources(sources, btn);
-            };
-            wrapper.appendChild(btn);
-        };
     })();
 </script>
 

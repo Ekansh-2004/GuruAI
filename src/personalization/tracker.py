@@ -101,11 +101,16 @@ def create_session(user_id: int, title: str = "New Chat") -> str:
     return session_id
 
 def get_session_messages(session_id: str) -> List[Dict[str, str]]:
-    """Get message history for one specific session from SQLite."""
+    """Get message history for one specific session from SQLite.
+
+    Assistant messages that were answered with retrieved context carry a
+    `sources` list (filename/page/etc. per Prompt 2) alongside their content,
+    so the chat UI can show source attribution again after a reload.
+    """
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id ASC", 
+            "SELECT role, content, sources FROM messages WHERE session_id = ? ORDER BY id ASC",
             (session_id,)
         )
         messages = []
@@ -117,22 +122,31 @@ def get_session_messages(session_id: str) -> List[Dict[str, str]]:
                     content = json.loads(content)
                 except Exception:
                     pass
-            messages.append({"role": role, "content": content})
+            msg = {"role": role, "content": content}
+            if r["sources"]:
+                try:
+                    msg["sources"] = json.loads(r["sources"])
+                except Exception:
+                    pass
+            messages.append(msg)
         return messages
 
-def add_message(session_id: str, role: str, content):
+def add_message(session_id: str, role: str, content, sources: Optional[list] = None):
     """Append a message to a session in SQLite and update the session timestamp.
-    If content is a dict (e.g. a quiz), it is auto-serialized to JSON."""
+    If content is a dict (e.g. a quiz), it is auto-serialized to JSON.
+    `sources` (the CRAG sources_metadata list) is stored alongside assistant
+    messages so source attribution survives a reload."""
     if isinstance(content, dict):
         content = json.dumps(content)
+    sources_json = json.dumps(sources) if sources else None
     now = str(datetime.now())
     with get_db() as conn:
         conn.execute(
-            "INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)", 
-            (session_id, role, content)
+            "INSERT INTO messages (session_id, role, content, sources) VALUES (?, ?, ?, ?)",
+            (session_id, role, content, sources_json)
         )
         conn.execute(
-            "UPDATE sessions SET updated_at = ? WHERE id = ?", 
+            "UPDATE sessions SET updated_at = ? WHERE id = ?",
             (now, session_id)
         )
         conn.commit()
