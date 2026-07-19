@@ -8,7 +8,7 @@ GuruAI (also known as "The Scholar") is an advanced context-aware, adaptive tuto
 - **Adaptive Knowledge Tracking**: Implements an Exponential Moving Average (EMA) algorithm to track sustained mastery levels across subjects and topics, categorizing your knowledge as *Strong*, *Average*, or *Weak*.
 - **Personalized Topic Tutor**: Automatically scales topic explanations and generates difficulty-adjusted quizzes based precisely on your current tracked mastery level.
 - **Persistent User Memory**: An embedded memory system extracts and retains your learning preferences, background, and goals to provide deeply contextual interactions across all sessions globally.
-- **Session & Multi-user Management**: Supports robust handling of distinct chat sessions, independent vector spaces per session, and multi-tenant capabilities (SQLite, bcrypt, JWT).
+- **Session & Multi-user Management**: Supports robust handling of distinct chat sessions, independent vector spaces per session, and multi-tenant capabilities (SQLite, PBKDF2-HMAC-SHA256 password hashing, HMAC-signed session tokens).
 - **Modern UI/UX**: Sleek, responsive, full-screen UI with interactive widgets, multi-view navigation, and dynamic dark/light mode toggling built with TailwindCSS.
 
 ## Tech Stack
