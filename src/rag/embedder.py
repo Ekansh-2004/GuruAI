@@ -1,4 +1,5 @@
 import os
+import shutil
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
@@ -14,6 +15,19 @@ DB_BASE_PATH = os.path.join(os.getcwd(), "faiss_index_db")
 def get_db_path(session_id: str) -> str:
     """Helper to get the specific path for a session's DB."""
     return os.path.join(DB_BASE_PATH, session_id)
+
+def vectorstore_exists(session_id: str) -> bool:
+    """True if a session has a FAISS index saved to disk."""
+    return os.path.exists(os.path.join(get_db_path(session_id), "index.faiss"))
+
+def delete_vectorstore(session_id: str) -> None:
+    """Remove a session's FAISS directory from disk. No-op if it was never built.
+
+    Errors propagate; callers that must not fail on cleanup should catch them.
+    """
+    db_path = get_db_path(session_id)
+    if os.path.exists(db_path):
+        shutil.rmtree(db_path)
 
 # ── Cached embedding model singleton ──
 # HuggingFaceEmbeddings loads ~80MB of model weights from disk.

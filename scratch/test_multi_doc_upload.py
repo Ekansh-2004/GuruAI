@@ -26,7 +26,6 @@ database.DB_FILE = _tmp_db.name
 
 from fastapi.testclient import TestClient
 from src.core.database import init_db
-from src.personalization import tracker
 from src.rag.embedder import load_existing_vectorstore, get_db_path
 import server
 

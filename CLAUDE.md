@@ -22,10 +22,26 @@ GuruAI (internally "The Scholar") is a FastAPI + RAG tutoring system with:
 
 ## Directory Structure
 ```
-server.py                  # FastAPI entry point — ALL routes live here (~690 lines)
+server.py                  # thin entry point: app, middleware, include_router (~60 lines)
 requirements.txt
 requirements-dev.txt
 src/
+├── api/                   # HTTP layer
+│   ├── deps.py            # get_current_user, check_auth_html, verify_session_ownership, set_auth_cookie
+│   ├── schemas.py         # all Pydantic request models
+│   ├── retriever_cache.py # LRU cache of per-session hybrid retrievers (get/refresh/invalidate)
+│   └── routers/           # one module per functional area
+│       ├── auth.py        # /api/auth/*
+│       ├── pages.py       # HTML page serving + redirects
+│       ├── sessions.py    # /api/sessions/* incl. upload, documents, knowledge
+│       ├── chat.py        # /api/chat (SSE)
+│       ├── quiz.py        # session quiz + /api/quiz/answer
+│       ├── profile.py     # /api/profile/*
+│       ├── srs.py         # review-queue, mark-reviewed, topics/statistics
+│       ├── subjects.py    # /api/subjects/*
+│       ├── topic.py       # /api/topic/explain, /api/topic/quiz
+│       ├── memory.py      # /api/memory/*
+│       └── user.py        # /api/user/profile, /api/user/stats
 ├── core/
 │   ├── config.py          # env vars + chunking constants
 │   ├── database.py        # DB_FILE, get_db() contextmanager, init_db() schema
@@ -34,12 +50,15 @@ src/
 │   ├── crag.py            # CRAG: relevance grading + web-search fallback
 │   ├── chain.py           # builds the streaming answer chain
 │   ├── retriever.py       # HybridRetriever, RRF fusion, per-document diversification
-│   ├── embedder.py        # FAISS create/load, get_db_path()
+│   ├── embedder.py        # FAISS create/load/delete, get_db_path(), vectorstore_exists()
 │   ├── loader.py          # PDF/DOCX/TXT → chunked Documents
 │   ├── quiz.py            # session-wide quiz generation
 │   └── topic_tutor.py     # per-topic explanations + quizzes
+├── sessions/              # chat session persistence
+│   ├── store.py           # sessions, messages, quiz JSON
+│   └── documents.py       # uploaded-document metadata + knowledge-base clearing
 ├── personalization/
-│   ├── tracker.py         # sessions, messages, documents, quizzes, mastery/EMA (~600 lines)
+│   ├── mastery.py         # EMA, knowledge profile, SRS schedule views, review queue
 │   ├── spaced_rep.py      # SpacedRepetitionScheduler
 │   └── user_memory.py     # memory items, memory chat, subjects, user profile
 ├── auth/
@@ -59,6 +78,9 @@ static/
     ├── review-queue.js
     ├── srs-stats.js
     └── study-tracker.js
+tests/
+├── smoke_test.py          # end-to-end characterization test (no LLM needed)
+└── routes_snapshot.json   # expected route table; guards against routes lost in refactors
 scratch/                   # integration tests + benchmark (see Testing)
 faiss_index_db/            # per-session FAISS indexes (gitignored)
 ```
@@ -67,8 +89,12 @@ Note: `src/auth/` and `src/personalization/` have no `__init__.py`. They resolve
 PEP 420 namespace packages. `src/`, `src/core/`, `src/rag/`, and `src/migrations/` do have one.
 
 ## Key Files & Functions
-- `server.py` — every route; also holds the LRU retriever cache (`_retriever_cache`, max 32) and the auth dependencies `get_current_user` / `check_auth_html` / `verify_session_ownership`
-- `tracker.py` — `update_ema()`, `update_topic_performance()`, `get_performance_areas()`, `list_topics_with_schedule()`, `get_topic_statistics()`, plus all session/message/document CRUD
+- `server.py` — creates the app and includes routers; no handler logic
+- `api/deps.py` — `get_current_user` (401), `check_auth_html` (redirect), `verify_session_ownership` (403/404), `set_auth_cookie`
+- `api/retriever_cache.py` — `get()` / `refresh()` / `invalidate()`; LRU, max 32 entries
+- `sessions/store.py` — session + message CRUD, `save_quiz()` / `get_quiz()`
+- `sessions/documents.py` — `add_document()`, `get_session_documents()`, `clear_session_knowledge_base()`
+- `personalization/mastery.py` — `update_ema()`, `update_topic_performance()`, `get_performance_areas()`, `list_topics_with_schedule()`, `build_review_queue()`, `get_topic_statistics()`, `get_user_stats()`, `build_profile_summary()`
 - `spaced_rep.py` — `SpacedRepetitionScheduler` class
 - `quiz.py` — `generate_quiz_for_session_db()`
 - `topic_tutor.py` — `generate_topic_explanation()`, `generate_topic_quiz()`
@@ -129,20 +155,28 @@ python server.py          # http://localhost:8000
 ```
 
 ## Testing
-Integration tests live in `scratch/` (misnamed — they are real tests):
+The fast, hermetic check — no API keys, runs against a temp DB and temp FAISS dir:
 ```bash
-python scratch/test_spaced_rep.py
-python scratch/test_multi_doc_upload.py
-python scratch/test_multi_doc_retrieval.py
+python tests/smoke_test.py     # 84 checks across every LLM-free endpoint
+```
+It also diffs the live route table against `tests/routes_snapshot.json`, so a route
+accidentally dropped during a refactor fails loudly. Regenerate the snapshot
+(by deleting it and re-running) only when routes intentionally change.
+
+Heavier integration tests live in `scratch/`:
+```bash
+python scratch/test_spaced_rep.py        # no API keys needed
+python scratch/test_multi_doc_upload.py  # downloads the embedding model
+python scratch/test_multi_doc_retrieval.py  # needs GOOGLE_API_KEY + GROQ_API_KEY
 ```
 These hit live LLM APIs and the real `scholar.db` — they are not hermetic and
 require valid API keys. `scratch/benchmark.py` is a retrieval timing benchmark,
 not a test, and needs `requirements-dev.txt` for numpy.
 
 ## Known Limitations / Tech Debt
-- `server.py` (690 lines) and `tracker.py` (600 lines) each mix several concerns and want splitting
+- `static/index.html` is ~2340 lines with JS/CSS inline; all 5 pages need their JS/CSS extracted
 - `static/theme.js` is dead; `toggleTheme` is duplicated inline across all 5 pages
-- The FAISS path `faiss_index_db/{session_id}` is hardcoded in 4 places despite `get_db_path()` existing
+- `escapeHtml` and `loadProfile` are duplicated across pages/widgets; ~45 raw `fetch()` calls each hand-roll error handling
 - Migration modules start with digits, so `python -m src.migrations.001_...` fails; there is no applied-migration tracking
 - CORS is `allow_origins=["*"]` alongside cookie auth
 - `@app.on_event("startup")` is deprecated in favor of `lifespan`

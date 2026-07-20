@@ -1,4 +1,4 @@
-"""Manual test script for the spaced-repetition scheduler and tracker integration.
+"""Manual test script for the spaced-repetition scheduler and mastery integration.
 Run with: python scratch/test_spaced_rep.py
 """
 import os
@@ -16,7 +16,7 @@ database.DB_FILE = _tmp_db.name
 
 from src.core.database import init_db, get_db
 from src.personalization.spaced_rep import SpacedRepetitionScheduler
-from src.personalization import tracker
+from src.personalization import mastery
 
 init_db()
 
@@ -85,7 +85,7 @@ check(
     scheduler.is_due_for_review(today - timedelta(days=1), today) is True
 )
 
-# ── 4. get_review_schedule via tracker (end-to-end through SQLite) ──
+# ── 4. get_review_schedule via mastery (end-to-end through SQLite) ──
 with get_db() as conn:
     conn.execute("INSERT INTO users (id, username, password_hash) VALUES (1, 'test', 'x')")
     conn.execute("INSERT INTO sessions (id, user_id, title) VALUES ('s1', 1, 'Test Session')")
@@ -93,9 +93,9 @@ with get_db() as conn:
 
 # Simulate several correct answers on "Calculus" to build up review_count.
 for _ in range(3):
-    tracker.update_topic_performance("s1", "Math", "Calculus", True)
+    mastery.update_topic_performance("s1", "Math", "Calculus", True)
 
-schedule = tracker.get_review_schedule("Calculus", 1)
+schedule = mastery.get_review_schedule("Calculus", 1)
 print("get_review_schedule result:", schedule)
 
 check("get_review_schedule returns a dict with expected keys",
@@ -111,7 +111,7 @@ check("get_review_schedule mastery_category reflects EMA-derived mastery_level",
       schedule.get("mastery_category") == scheduler.get_mastery_category(schedule.get("mastery_level")))
 
 # Backward compatibility: topic with no reviews at all
-none_schedule = tracker.get_review_schedule("Nonexistent Topic", 1)
+none_schedule = mastery.get_review_schedule("Nonexistent Topic", 1)
 check("get_review_schedule returns {} for unknown topic", none_schedule == {})
 
 os.unlink(_tmp_db.name)
