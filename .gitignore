@@ -1,6 +1,10 @@
 # Secrets
 .env
 
+# Local AI-assistant instructions (kept out of the public repo)
+CLAUDE.md
+.claude/
+
 # Environments
 venv/
 ENV/
