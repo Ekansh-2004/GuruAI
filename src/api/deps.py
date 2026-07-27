@@ -1,4 +1,5 @@
 """Shared FastAPI dependencies: authentication and session ownership."""
+import os
 from typing import Optional
 
 from fastapi import HTTPException, Request, Response, status
@@ -8,6 +9,11 @@ from src.core.database import get_db
 
 COOKIE_NAME = "access_token"
 COOKIE_MAX_AGE = 86400
+
+# Send the auth cookie only over HTTPS when deployed. Defaults to False so local
+# development over http://localhost keeps working; set COOKIE_SECURE=1 in any
+# HTTPS deployment (e.g. Hugging Face Spaces).
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
 
 
 def set_auth_cookie(response: Response, user_id: int) -> None:
@@ -19,7 +25,7 @@ def set_auth_cookie(response: Response, user_id: int) -> None:
         httponly=True,
         max_age=COOKIE_MAX_AGE,
         samesite="lax",
-        secure=False,
+        secure=COOKIE_SECURE,
     )
 
 

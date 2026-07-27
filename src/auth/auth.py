@@ -6,8 +6,15 @@ import json
 import time
 from typing import Optional
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "scholar-secure-secret-key-change-in-prod-12345")
+_DEFAULT_SECRET = "scholar-secure-secret-key-change-in-prod-12345"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", _DEFAULT_SECRET)
 ALGORITHM = "HS256"
+
+if SECRET_KEY == _DEFAULT_SECRET:
+    # Anyone who has read this (public) source can forge login tokens with the
+    # default key. Fine for local dev; must be overridden in any deployment.
+    print("[auth] WARNING: JWT_SECRET_KEY is unset — using the insecure built-in "
+          "default. Set JWT_SECRET_KEY before deploying.")
 
 # ── Password Hashing using standard library PBKDF2 ──
 

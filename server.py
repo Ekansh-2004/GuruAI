@@ -5,6 +5,8 @@ Shared auth dependencies are in src/api/deps.py.
 
 Run with:  python server.py
 """
+import os
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,8 +39,19 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize the SQLite schema before serving traffic."""
+    """Initialize the SQLite schema before serving traffic.
+
+    When SEED_DEMO is truthy (e.g. on a public demo deployment), also populate a
+    demo account so reviewers can explore the app without registering or
+    uploading. Seeding failures never block startup.
+    """
     init_db()
+    if os.getenv("SEED_DEMO", "").lower() in ("1", "true", "yes"):
+        try:
+            from scripts.seed_demo import seed_demo
+            seed_demo()
+        except Exception as e:  # a broken demo must not take the app down
+            print(f"[startup] demo seed skipped: {e}")
 
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -60,4 +73,8 @@ app.include_router(pages.router)
 
 
 if __name__ == "__main__":
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+    # PORT is injected by most hosts (Hugging Face Spaces expects 7860); defaults
+    # to 8000 for local dev. RELOAD=1 turns on autoreload while developing.
+    port = int(os.getenv("PORT", "8000"))
+    reload = os.getenv("RELOAD", "").lower() in ("1", "true", "yes")
+    uvicorn.run("server:app", host="0.0.0.0", port=port, reload=reload)
