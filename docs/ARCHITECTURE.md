@@ -6,15 +6,6 @@ back, opening each file at the moment the request reaches it. By the end you'll
 have touched every hard part of the system — auth, retrieval, CRAG, the LLM
 chain, and mastery tracking — in the order the code actually runs them.
 
-If you read only one document to understand this codebase, read this one with the
-files open in a split pane.
-
-> Orientation first: skim [CLAUDE.md](../CLAUDE.md) for the file map and
-> [src/core/database.py](../src/core/database.py) for the 8 tables. The schema is
-> the truest description of the domain — everything below is code shuttling rows
-> between those tables and an LLM.
-
----
 
 ## The 10,000-foot shape
 
