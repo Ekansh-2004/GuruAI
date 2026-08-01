@@ -29,18 +29,6 @@ def load_memory(user_id: int) -> list[str]:
         )
         return [r["memory_item"] for r in cur.fetchall()]
 
-def save_memory(user_id: int, items: list[str]):
-    """Overwrite the preferences/memories list for a user in SQLite."""
-    clean = [(user_id, item.strip()) for item in items if item and item.strip()]
-    with get_db() as conn:
-        conn.execute("DELETE FROM user_memories WHERE user_id = ?", (user_id,))
-        if clean:
-            conn.executemany(
-                "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
-                clean
-            )
-        conn.commit()
-
 def delete_memory_item(user_id: int, index: int) -> list[str]:
     """Delete a preference item by its positional index (0-based)."""
     with get_db() as conn:
@@ -258,19 +246,8 @@ def delete_subject(user_id: int, subject: str) -> list[str]:
     subject_title = subject.strip().title()
     with get_db() as conn:
         conn.execute(
-            "DELETE FROM user_subjects WHERE user_id = ? AND subject = ?", 
+            "DELETE FROM user_subjects WHERE user_id = ? AND subject = ?",
             (user_id, subject_title)
         )
         conn.commit()
     return load_subjects(user_id)
-
-def get_subjects_prompt_constraint(user_id: int) -> str:
-    """Return a formatted string to inject into LLM prompts restricting subject classification."""
-    subjects = load_subjects(user_id)
-    if not subjects:
-        return ""
-    formatted = ", ".join(f'"{s}"' for s in subjects)
-    return f"""SUBJECT CLASSIFICATION CONSTRAINT:
-The student is currently studying these subjects ONLY: {formatted}.
-You MUST map every topic/question to one of these exact subject names.
-Do NOT use any other subject name outside this list."""

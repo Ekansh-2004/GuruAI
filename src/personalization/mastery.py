@@ -1,13 +1,5 @@
 """Topic mastery tracking (EMA) and spaced-repetition scheduling.
 
-Split out of the former src/personalization/tracker.py. Session/message storage
-now lives in src/sessions/store.py and document metadata in
-src/sessions/documents.py.
-
-Two paths write mastery:
-  - update_topic_performance(): driven by individual right/wrong quiz answers.
-  - update_ema():               driven by a manual 0-1 self-rated review score.
-Both advance the spaced-repetition schedule via the shared `scheduler`.
 """
 import difflib
 from dataclasses import dataclass

@@ -1,8 +1,4 @@
 """Chat session and message persistence.
-
-Split out of the former src/personalization/tracker.py, which mixed session
-storage with mastery tracking. Mastery/EMA now lives in
-src/personalization/mastery.py; document metadata in src/sessions/documents.py.
 """
 import json
 import uuid
