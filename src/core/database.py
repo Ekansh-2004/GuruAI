@@ -16,8 +16,8 @@ DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://guruai:guruai_dev_pw@localhost:5432/guruai_dev"
 )
 
-# 384 = the embedding dimension of all-MiniLM-L6-v2 (src/rag/embedder.py).
-EMBEDDING_DIM = 384
+# 768 = the configured output_dimensionality of gemini-embedding-001 (src/rag/embedder.py).
+EMBEDDING_DIM = 768
 
 @contextmanager
 def get_db():

@@ -1,8 +1,9 @@
 import json
 
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from pgvector import Vector
 
+from src.core.config import GOOGLE_API_KEY
 from src.core.database import get_db
 
 """
@@ -12,18 +13,23 @@ keyed by session_id, so retrieval can query it directly instead of loading a
 local FAISS index.
 """
 
-_MODEL_NAME = "all-MiniLM-L6-v2"
+_MODEL_NAME = "models/gemini-embedding-001"
+_OUTPUT_DIM = 768  # must match src.core.database.EMBEDDING_DIM
 
-# ── Cached embedding model singleton ──
-# HuggingFaceEmbeddings loads ~80MB of model weights from disk.
-# Caching at module level avoids reloading on every embed call.
+# ── Cached embedding client singleton ──
+# Hosted, not local: no model weights to load, so this just avoids
+# re-constructing the client object on every embed call.
 _embeddings = None
 
 def get_embeddings():
-    """Return the cached local embedding model (loaded once on first call)."""
+    """Return the cached embedding client (built once on first call)."""
     global _embeddings
     if _embeddings is None:
-        _embeddings = HuggingFaceEmbeddings(model_name=_MODEL_NAME)
+        _embeddings = GoogleGenerativeAIEmbeddings(
+            model=_MODEL_NAME,
+            google_api_key=GOOGLE_API_KEY,
+            output_dimensionality=_OUTPUT_DIM,
+        )
     return _embeddings
 
 def get_db_path(session_id: str) -> str:
@@ -52,7 +58,7 @@ def create_vectorstore(docs, session_id: str):
     rather than replacing existing ones, so a second upload batch adds to the
     first instead of wiping it out.
     """
-    print("Generating local embeddings and saving to Postgres...")
+    print("Generating embeddings via Gemini and saving to Postgres...")
     model = get_embeddings()
     texts = [d.page_content for d in docs]
     vectors = model.embed_documents(texts)

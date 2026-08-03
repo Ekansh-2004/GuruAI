@@ -1,29 +1,26 @@
-# GuruAI container — tuned for Hugging Face Spaces (Docker SDK), works anywhere.
+# GuruAI container — works on Hugging Face Spaces (Docker SDK) or any other
+# Docker host.
 #
-# All persistent data (users, sessions, embedded document chunks) now lives in
-# a Postgres database reached via DATABASE_URL — nothing is written to local
-# disk at runtime except the pre-baked embedding-model cache below, which is
-# already produced at build time. HF Spaces runs the container as UID 1000
-# regardless, so we still keep the whole app under /home/user, that user's home.
+# All persistent data (users, sessions, embedded document chunks) lives in a
+# Postgres database reached via DATABASE_URL. Embeddings are computed via a
+# hosted Gemini API call (src/rag/embedder.py), not a local model — nothing is
+# written to local disk at runtime and there is no heavy ML dependency (no
+# PyTorch/sentence-transformers) to load or pre-bake, which keeps this image
+# small and light enough for ordinary small-memory hosts.
 FROM python:3.11-slim
 
-# Create the non-root user HF Spaces expects.
+# Create a non-root user (matches what HF Spaces expects; harmless elsewhere).
 RUN useradd -m -u 1000 user
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
-    PYTHONUNBUFFERED=1 \
-    HF_HOME=/home/user/.cache/huggingface
+    PYTHONUNBUFFERED=1
 
 WORKDIR /home/user/app
 
 # Install dependencies first so layer caching survives source edits.
 COPY --chown=user:user requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
-
-# Pre-download the sentence-transformers embedding model into the image so the
-# first request doesn't pay a ~90MB download. Matches embedder.py's model name.
-RUN python -c "from langchain_huggingface import HuggingFaceEmbeddings; HuggingFaceEmbeddings(model_name='all-MiniLM-L6-v2')"
 
 COPY --chown=user:user . .
 

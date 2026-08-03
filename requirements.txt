@@ -16,12 +16,8 @@ langchain-community>=0.4.1,<1.0   # TFIDFRetriever integration (sparse half of h
 langchain-text-splitters>=1.1.1,<2.0
 
 # ── Model providers ──
-langchain-google-genai>=4.2.1,<5.0   # Gemini — CRAG relevance grader
+langchain-google-genai>=4.2.1,<5.0   # Gemini — CRAG relevance grader + hosted embeddings (src/rag/embedder.py)
 langchain-groq>=1.1.2,<2.0           # Llama — answer/quiz chains
-
-# ── Embeddings ──
-langchain-huggingface>=1.2.1,<2.0
-sentence-transformers>=5.3.0,<6.0
 
 # ── Database + vector store (Postgres + pgvector; replaces local SQLite + FAISS) ──
 psycopg2-binary>=2.9.12,<3.0
