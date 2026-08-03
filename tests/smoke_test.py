@@ -1,30 +1,59 @@
 """End-to-end characterization test for the GuruAI HTTP surface.
 
-Runs against a throwaway SQLite DB and a throwaway FAISS directory, so it never
-touches scholar.db or faiss_index_db. Exercises every endpoint that does not
-require a live LLM call, plus a full route-table snapshot.
+Runs against a throwaway Postgres database (created and dropped for this run
+only), so it never touches the real app database. Exercises every endpoint
+that does not require a live LLM call, plus a full route-table snapshot.
+
+Requires a reachable Postgres server with the pgvector extension available
+(set via DATABASE_URL, or defaults to the local dev instance used throughout
+this migration: postgresql://guruai:guruai_dev_pw@localhost:5432/guruai_dev).
+This is a real change from the old SQLite-backed version of this test, which
+needed zero external services — worth knowing if this test is ever wired
+into CI.
 
 Run with:  python tests/smoke_test.py
 Exits non-zero on the first failure.
 """
 import json
 import os
-import shutil
 import sys
-import tempfile
+import uuid
+from urllib.parse import urlparse, urlunparse
+
+import psycopg2
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# ── Redirect all persistence into a temp dir BEFORE importing the app ──
-_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_TMP = tempfile.mkdtemp(prefix="guruai-smoke-")
-# server.py mounts StaticFiles(directory="static") relative to cwd, so the temp
-# dir needs to expose the real static/ before we chdir into it.
-os.symlink(os.path.join(_PROJECT_ROOT, "static"), os.path.join(_TMP, "static"))
-os.chdir(_TMP)  # FAISS paths are built from os.getcwd()
+# ── Create a throwaway Postgres database BEFORE importing the app ──
+_BASE_DATABASE_URL = os.getenv(
+    "DATABASE_URL", "postgresql://guruai:guruai_dev_pw@localhost:5432/guruai_dev"
+)
+_parsed = urlparse(_BASE_DATABASE_URL)
+_TEST_DB_NAME = f"test_{uuid.uuid4().hex[:12]}"
+_ADMIN_URL = urlunparse(_parsed._replace(path="/postgres"))
+_TEST_DB_URL = urlunparse(_parsed._replace(path=f"/{_TEST_DB_NAME}"))
+
+
+def _admin_execute(sql: str) -> None:
+    conn = psycopg2.connect(_ADMIN_URL)
+    conn.autocommit = True  # CREATE DATABASE / DROP DATABASE can't run inside a transaction
+    try:
+        conn.cursor().execute(sql)
+    finally:
+        conn.close()
+
+
+_admin_execute(f'CREATE DATABASE "{_TEST_DB_NAME}"')
+
+# get_db() registers the pgvector type on every connection, which fails if the
+# extension doesn't exist yet — create it here, before any app code connects.
+_bootstrap_conn = psycopg2.connect(_TEST_DB_URL)
+_bootstrap_conn.autocommit = True
+_bootstrap_conn.cursor().execute("CREATE EXTENSION IF NOT EXISTS vector;")
+_bootstrap_conn.close()
 
 import src.core.database as database  # noqa: E402
-database.DB_FILE = os.path.join(_TMP, "test.db")
+database.DATABASE_URL = _TEST_DB_URL
 
 from fastapi.testclient import TestClient  # noqa: E402
 import server  # noqa: E402
@@ -266,7 +295,7 @@ else:
     print(f"  ..    wrote baseline snapshot ({len(routes)} routes)")
 
 # ── Report ────────────────────────────────────────────────────────────
-shutil.rmtree(_TMP, ignore_errors=True)
+_admin_execute(f'DROP DATABASE IF EXISTS "{_TEST_DB_NAME}"')
 print("\n" + "=" * 60)
 if _failures:
     print(f"FAILED — {len(_failures)} of {_checks} checks\n")

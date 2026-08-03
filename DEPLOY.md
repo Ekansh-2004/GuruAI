@@ -22,6 +22,7 @@ The repo is deployment-ready:
 | HTTPS cookies | `COOKIE_SECURE=1` makes the auth cookie HTTPS-only |
 | Demo account | `SEED_DEMO=1` populates a demo user on startup |
 | Container | `Dockerfile` runs as UID 1000 and pre-bakes the embedding model |
+| Database | `DATABASE_URL` (Postgres + pgvector) holds all data, including embedded document chunks — see "Persistence" below |
 
 ---
 
@@ -73,6 +74,7 @@ In the Space: **Settings → Variables and secrets**.
 | `GROQ_API_KEY` | your Groq key |
 | `GOOGLE_API_KEY` | your Gemini key |
 | `JWT_SECRET_KEY` | a long random string (e.g. `openssl rand -hex 32`) |
+| `DATABASE_URL` | your Neon connection string — see "Persistence" below |
 
 **Variables** (plain — for flags):
 | Name | Value |
@@ -101,13 +103,33 @@ Systems document you can chat with right away.
 
 ---
 
+## Persistence (Postgres + pgvector)
+
+All data — users, sessions, messages, mastery scores, and embedded document
+chunks — lives in a single Postgres database with the `pgvector` extension,
+reached via `DATABASE_URL`. This replaced the earlier local-SQLite +
+local-FAISS setup specifically because HF free Spaces have an **ephemeral
+disk**: anything written to the container's filesystem is wiped on every
+rebuild or sleep/wake cycle, which meant real visitors' accounts and uploads
+used to vanish on restart. A hosted Postgres database survives that.
+
+**Neon** (neon.tech) is recommended for the free tier: unlike some
+alternatives, it auto-suspends when idle and auto-wakes on the next query,
+with no manual "unpause" step.
+
+1. Create a free Neon project and database.
+2. In Neon's SQL editor (or via `psql`), run once: `CREATE EXTENSION IF NOT EXISTS vector;`
+3. Copy the connection string Neon gives you and set it as the `DATABASE_URL`
+   secret on the Space (table above). The app's `init_db()` creates every
+   table automatically on next startup — no manual schema step needed beyond
+   the extension.
+4. Local development against this same setup: see "Running the container
+   locally" below, or run Postgres directly via
+   `docker run -d --name guruai-postgres -e POSTGRES_USER=guruai -e POSTGRES_PASSWORD=guruai_dev_pw -e POSTGRES_DB=guruai_dev -p 5432:5432 pgvector/pgvector:pg16`
+   and point `DATABASE_URL` at `postgresql://guruai:guruai_dev_pw@localhost:5432/guruai_dev`.
+
 ## Notes & gotchas
 
-- **Free Spaces have an ephemeral disk.** `scholar.db` and `faiss_index_db/`
-  reset whenever the Space rebuilds or sleeps and wakes. That's *fine* here:
-  `SEED_DEMO=1` re-creates the demo on every boot. If you want real persistence
-  (accounts that survive restarts), add HF **persistent storage** (paid) and
-  point `scholar.db` + `faiss_index_db/` at the mounted `/data` path.
 - **Free Spaces sleep after inactivity.** First hit after sleep cold-starts in
   ~30 s. Keep a short GIF in the README as a fallback for when it's asleep.
 - **Cost/abuse:** every chat calls Groq + Gemini on your keys. The demo account
@@ -122,7 +144,10 @@ Systems document you can chat with right away.
 docker build -t guruai .
 docker run -p 7860:7860 \
   -e GROQ_API_KEY=... -e GOOGLE_API_KEY=... -e JWT_SECRET_KEY=... \
+  -e DATABASE_URL=postgresql://guruai:guruai_dev_pw@host.docker.internal:5432/guruai_dev \
   -e SEED_DEMO=1 \
   guruai
 # → http://localhost:7860
+# (assumes the local Postgres+pgvector container from "Persistence" above is
+# already running; host.docker.internal lets this container reach it)
 ```

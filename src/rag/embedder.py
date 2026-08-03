@@ -1,75 +1,84 @@
-import os
-import shutil
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+import json
 
-""" 
-This file is the Brain Builder for your application. It contains the exact functions that turn the shredded text chunks we just talked about into mathematical coordinates, and it saves those coordinates onto your hard drive so the AI can search through them later.
+from langchain_huggingface import HuggingFaceEmbeddings
+from pgvector import Vector
+
+from src.core.database import get_db
+
+"""
+This file is the Brain Builder for your application. It embeds each uploaded
+chunk and stores it in the `document_chunks` table (Postgres + pgvector),
+keyed by session_id, so retrieval can query it directly instead of loading a
+local FAISS index.
 """
 
-
-# 1. Grab the absolute path of your current working directory
-# This ensures it always points to C:\Python_Study\BTP_1\faiss_index_db
-DB_BASE_PATH = os.path.join(os.getcwd(), "faiss_index_db")
-
-def get_db_path(session_id: str) -> str:
-    """Helper to get the specific path for a session's DB."""
-    return os.path.join(DB_BASE_PATH, session_id)
-
-def vectorstore_exists(session_id: str) -> bool:
-    """True if a session has a FAISS index saved to disk."""
-    return os.path.exists(os.path.join(get_db_path(session_id), "index.faiss"))
-
-def delete_vectorstore(session_id: str) -> None:
-    """Remove a session's FAISS directory from disk. No-op if it was never built.
-
-    Errors propagate; callers that must not fail on cleanup should catch them.
-    """
-    db_path = get_db_path(session_id)
-    if os.path.exists(db_path):
-        shutil.rmtree(db_path)
+_MODEL_NAME = "all-MiniLM-L6-v2"
 
 # ── Cached embedding model singleton ──
 # HuggingFaceEmbeddings loads ~80MB of model weights from disk.
-# Caching at module level avoids reloading on every vectorstore operation.
+# Caching at module level avoids reloading on every embed call.
 _embeddings = None
 
 def get_embeddings():
     """Return the cached local embedding model (loaded once on first call)."""
     global _embeddings
     if _embeddings is None:
-        _embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        _embeddings = HuggingFaceEmbeddings(model_name=_MODEL_NAME)
     return _embeddings
 
+def get_db_path(session_id: str) -> str:
+    """Legacy label, kept only for the `documents.storage_path` metadata column.
+    Chunks now live in the document_chunks table, not on local disk."""
+    return f"postgres:document_chunks:{session_id}"
+
+def vectorstore_exists(session_id: str) -> bool:
+    """True if a session has any embedded chunks stored."""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT 1 FROM document_chunks WHERE session_id = %s LIMIT 1", (session_id,))
+        return cur.fetchone() is not None
+
+def delete_vectorstore(session_id: str) -> None:
+    """Remove a session's embedded chunks. No-op if there were none."""
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM document_chunks WHERE session_id = %s", (session_id,))
+        conn.commit()
+
 def create_vectorstore(docs, session_id: str):
-    """Build or extend the FAISS index for a session and save it to disk.
+    """Embed each chunk and insert it into document_chunks for this session.
 
-    If the session already has a vectorstore (e.g. a prior upload batch),
-    the new chunks are merged into it so multi-document sessions accumulate
-    instead of each upload call wiping out earlier documents.
+    Multi-document sessions accumulate naturally: this always inserts new rows
+    rather than replacing existing ones, so a second upload batch adds to the
+    first instead of wiping it out.
     """
-    print("Generating local embeddings and saving to disk...")
-    embeddings = get_embeddings()
-    existing = load_existing_vectorstore(session_id)
-    if existing is not None:
-        existing.add_documents(docs)
-        vectorstore = existing
-    else:
-        vectorstore = FAISS.from_documents(docs, embeddings)
+    print("Generating local embeddings and saving to Postgres...")
+    model = get_embeddings()
+    texts = [d.page_content for d in docs]
+    vectors = model.embed_documents(texts)
 
-    # Save the database locally using the absolute path
-    db_path = get_db_path(session_id)
-    os.makedirs(db_path, exist_ok=True)
-    vectorstore.save_local(db_path)
-    return vectorstore
+    with get_db() as conn:
+        cur = conn.cursor()
+        for doc, vector in zip(docs, vectors):
+            cur.execute(
+                """
+                INSERT INTO document_chunks (session_id, document_id, content, metadata, embedding)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    session_id,
+                    doc.metadata.get("document_id"),
+                    doc.page_content,
+                    json.dumps(doc.metadata),
+                    Vector(vector),
+                ),
+            )
+        conn.commit()
+    return session_id
 
 def load_existing_vectorstore(session_id: str):
-    """Check if a database already exists on startup and load it."""
-    db_path = get_db_path(session_id)
-    # Check if the index file actually exists inside our folder
-    index_file = os.path.join(db_path, "index.faiss")
-    
-    if os.path.exists(db_path) and os.path.exists(index_file):
-        embeddings = get_embeddings()
-        return FAISS.load_local(db_path, embeddings, allow_dangerous_deserialization=True)
-    return None
+    """Kept for interface compatibility with older callers; returns the
+    session_id if it has embedded chunks, else None. New code should query
+    document_chunks directly (see src/rag/retriever.py, src/api/retriever_cache.py,
+    src/rag/quiz.py) rather than treating this as a loadable FAISS object."""
+    return session_id if vectorstore_exists(session_id) else None

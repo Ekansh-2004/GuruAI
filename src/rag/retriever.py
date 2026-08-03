@@ -4,7 +4,10 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_core.documents import Document
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_community.retrievers import TFIDFRetriever
-from langchain_community.vectorstores import FAISS
+from pgvector import Vector
+
+from src.core.database import get_db
+from src.rag.embedder import get_embeddings
 
 
 def _doc_key(doc: Document) -> str:
@@ -64,12 +67,26 @@ def diversify_by_document(docs: List[Document], top_n: int) -> List[Document]:
 
 
 class HybridRetriever(BaseRetriever):
-    vectorstore: FAISS
+    session_id: str
     tfidf_retriever: TFIDFRetriever
     top_n: int = 4
 
     class Config:
         arbitrary_types_allowed = True
+
+    def _dense_search(self, query: str, k: int) -> List[Document]:
+        """Dense half: pgvector cosine-distance search over this session's chunks
+        (replaces FAISS.similarity_search)."""
+        query_vector = Vector(get_embeddings().embed_query(query))
+        with get_db() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "SELECT content, metadata FROM document_chunks "
+                "WHERE session_id = %s ORDER BY embedding <=> %s LIMIT %s",
+                (self.session_id, query_vector, k),
+            )
+            rows = cur.fetchall()
+        return [Document(page_content=r["content"], metadata=r["metadata"] or {}) for r in rows]
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun = None
@@ -80,8 +97,8 @@ class HybridRetriever(BaseRetriever):
         # enough chunks per document to work with in multi-document sessions.
         fetch_k = max(self.top_n * 6, 20)
 
-        # 1. Retrieve from dense (FAISS)
-        dense_docs = self.vectorstore.similarity_search(query, k=fetch_k)
+        # 1. Retrieve from dense (pgvector)
+        dense_docs = self._dense_search(query, fetch_k)
 
         # 2. Retrieve from sparse (TF-IDF)
         self.tfidf_retriever.k = fetch_k

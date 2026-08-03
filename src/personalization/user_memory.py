@@ -24,7 +24,7 @@ def load_memory(user_id: int) -> list[str]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT memory_item FROM user_memories WHERE user_id = ? ORDER BY id ASC", 
+            "SELECT memory_item FROM user_memories WHERE user_id = %s ORDER BY id ASC", 
             (user_id,)
         )
         return [r["memory_item"] for r in cur.fetchall()]
@@ -34,12 +34,12 @@ def delete_memory_item(user_id: int, index: int) -> list[str]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id FROM user_memories WHERE user_id = ? ORDER BY id ASC LIMIT 1 OFFSET ?",
+            "SELECT id FROM user_memories WHERE user_id = %s ORDER BY id ASC LIMIT 1 OFFSET %s",
             (user_id, index)
         )
         row = cur.fetchone()
         if row:
-            conn.execute("DELETE FROM user_memories WHERE id = ?", (row["id"],))
+            cur.execute("DELETE FROM user_memories WHERE id = %s", (row["id"],))
             conn.commit()
     return load_memory(user_id)
 
@@ -48,8 +48,9 @@ def add_memory_items(user_id: int, new_items: list[str]) -> list[str]:
     clean = [(user_id, item.strip()) for item in new_items if item and item.strip()]
     if clean:
         with get_db() as conn:
-            conn.executemany(
-                "INSERT OR IGNORE INTO user_memories (user_id, memory_item) VALUES (?, ?)",
+            cur = conn.cursor()
+            cur.executemany(
+                "INSERT INTO user_memories (user_id, memory_item) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                 clean
             )
             conn.commit()
@@ -58,7 +59,8 @@ def add_memory_items(user_id: int, new_items: list[str]) -> list[str]:
 def clear_all_memory(user_id: int):
     """Wipe all stored preferences for a user in SQLite."""
     with get_db() as conn:
-        conn.execute("DELETE FROM user_memories WHERE user_id = ?", (user_id,))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM user_memories WHERE user_id = %s", (user_id,))
         conn.commit()
 
 # ── User Profile ──
@@ -67,7 +69,7 @@ def load_user_profile(user_id: int) -> dict:
     """Return the user's display name and bio from the users table in SQLite."""
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT name, bio FROM users WHERE id = ?", (user_id,))
+        cur.execute("SELECT name, bio FROM users WHERE id = %s", (user_id,))
         row = cur.fetchone()
         if row:
             return {"name": row["name"] or "The Scholar", "bio": row["bio"] or ""}
@@ -76,8 +78,9 @@ def load_user_profile(user_id: int) -> dict:
 def save_user_profile(user_id: int, name: str, bio: str) -> dict:
     """Persist the user's display name and bio in SQLite."""
     with get_db() as conn:
-        conn.execute(
-            "UPDATE users SET name = ?, bio = ? WHERE id = ?", 
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET name = %s, bio = %s WHERE id = %s",
             (name.strip(), bio.strip(), user_id)
         )
         conn.commit()
@@ -90,7 +93,7 @@ def get_chat_history(user_id: int) -> list[dict]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT role, content FROM memory_chat_history WHERE user_id = ? ORDER BY id ASC", 
+            "SELECT role, content FROM memory_chat_history WHERE user_id = %s ORDER BY id ASC", 
             (user_id,)
         )
         return [{"role": r["role"], "content": r["content"]} for r in cur.fetchall()]
@@ -98,8 +101,9 @@ def get_chat_history(user_id: int) -> list[dict]:
 def append_chat_message(user_id: int, role: str, content: str):
     """Append a memory chat message to SQLite."""
     with get_db() as conn:
-        conn.execute(
-            "INSERT INTO memory_chat_history (user_id, role, content) VALUES (?, ?, ?)",
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO memory_chat_history (user_id, role, content) VALUES (%s, %s, %s)",
             (user_id, role, content)
         )
         conn.commit()
@@ -224,7 +228,7 @@ def load_subjects(user_id: int) -> list[str]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT subject FROM user_subjects WHERE user_id = ? ORDER BY id ASC", 
+            "SELECT subject FROM user_subjects WHERE user_id = %s ORDER BY id ASC", 
             (user_id,)
         )
         return [r["subject"] for r in cur.fetchall()]
@@ -234,8 +238,9 @@ def save_subject(user_id: int, subject: str) -> list[str]:
     subject_title = subject.strip().title()
     if subject_title:
         with get_db() as conn:
-            conn.execute(
-                "INSERT OR IGNORE INTO user_subjects (user_id, subject) VALUES (?, ?)",
+            cur = conn.cursor()
+            cur.execute(
+                "INSERT INTO user_subjects (user_id, subject) VALUES (%s, %s) ON CONFLICT DO NOTHING",
                 (user_id, subject_title)
             )
             conn.commit()
@@ -245,8 +250,9 @@ def delete_subject(user_id: int, subject: str) -> list[str]:
     """Remove a subject by name from SQLite. Returns updated list."""
     subject_title = subject.strip().title()
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM user_subjects WHERE user_id = ? AND subject = ?",
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM user_subjects WHERE user_id = %s AND subject = %s",
             (user_id, subject_title)
         )
         conn.commit()

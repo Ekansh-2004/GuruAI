@@ -5,6 +5,7 @@ from src.core.llm import llm_creative
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 from typing import List, Optional
+from src.core.database import get_db
 from src.rag.embedder import load_existing_vectorstore
 
 class QuizQuestion(BaseModel):
@@ -19,20 +20,21 @@ class Quiz(BaseModel):
     questions: List[QuizQuestion] = Field(description="List of 4 relevant questions based on chat history")
 
 def generate_quiz_for_session_db(session_id: str, user_subjects: Optional[List[str]] = None) -> dict:
-    """Generates a JSON-structured quiz drawing directly from the session's vectorstore."""
-    db = load_existing_vectorstore(session_id)
-    if not db:
+    """Generates a JSON-structured quiz drawing directly from the session's uploaded chunks."""
+    if not load_existing_vectorstore(session_id):
         return {"questions": []}
-        
-    doc_dict = db.docstore._dict
-    docs = list(doc_dict.values())
-    
-    if not docs:
+
+    with get_db() as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT content FROM document_chunks WHERE session_id = %s", (session_id,))
+        rows = cur.fetchall()
+
+    if not rows:
         return {"questions": []}
-        
-    sample_size = min(10, len(docs))
-    sampled_docs = random.sample(docs, sample_size)
-    text_corpus = "\n\n---\n\n".join([doc.page_content for doc in sampled_docs])
+
+    sample_size = min(10, len(rows))
+    sampled_rows = random.sample(rows, sample_size)
+    text_corpus = "\n\n---\n\n".join([r["content"] for r in sampled_rows])
     
     # Build subject constraint section
     if user_subjects and len(user_subjects) > 0:

@@ -1,8 +1,10 @@
 # GuruAI container — tuned for Hugging Face Spaces (Docker SDK), works anywhere.
 #
-# HF Spaces runs the container as UID 1000, so everything the app writes at
-# runtime (scholar.db, faiss_index_db/, the embedding-model cache) must live
-# under a directory that user owns. We keep the whole app under /home/user.
+# All persistent data (users, sessions, embedded document chunks) now lives in
+# a Postgres database reached via DATABASE_URL — nothing is written to local
+# disk at runtime except the pre-baked embedding-model cache below, which is
+# already produced at build time. HF Spaces runs the container as UID 1000
+# regardless, so we still keep the whole app under /home/user, that user's home.
 FROM python:3.11-slim
 
 # Create the non-root user HF Spaces expects.

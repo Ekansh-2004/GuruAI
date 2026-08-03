@@ -85,16 +85,17 @@ def _get_or_create_demo_user() -> tuple[int, bool]:
     """Return (user_id, created). created is False if the demo user already existed."""
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM users WHERE username = ?", (DEMO_USERNAME,))
+        cur.execute("SELECT id FROM users WHERE username = %s", (DEMO_USERNAME,))
         row = cur.fetchone()
         if row:
             return row["id"], False
         cur.execute(
-            "INSERT INTO users (username, password_hash, name) VALUES (?, ?, ?)",
+            "INSERT INTO users (username, password_hash, name) VALUES (%s, %s, %s) RETURNING id",
             (DEMO_USERNAME, hash_password(DEMO_PASSWORD), "Demo Student"),
         )
+        new_id = cur.fetchone()["id"]
         conn.commit()
-        return cur.lastrowid, True
+        return new_id, True
 
 
 def seed_demo() -> None:

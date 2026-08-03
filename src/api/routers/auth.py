@@ -21,18 +21,18 @@ def register(req: RegisterRequest, response: Response):
         cur = conn.cursor()
 
         # 1. Check if username exists using a single connection
-        cur.execute("SELECT id FROM users WHERE username = ?", (username,))
+        cur.execute("SELECT id FROM users WHERE username = %s", (username,))
         if cur.fetchone():
             raise HTTPException(status_code=400, detail="Username is already taken")
 
         # 2. Hash password and write the new user using the SAME connection
         pwd_hash = hash_password(req.password)
         cur.execute(
-            "INSERT INTO users (username, password_hash, name) VALUES (?, ?, ?)",
+            "INSERT INTO users (username, password_hash, name) VALUES (%s, %s, %s) RETURNING id",
             (username, pwd_hash, req.name or "The Scholar")
         )
+        user_id = cur.fetchone()["id"]
         conn.commit()
-        user_id = cur.lastrowid
 
     # 3. Issue the token and set the browser cookie
     set_auth_cookie(response, user_id)
@@ -45,7 +45,7 @@ def login(req: LoginRequest, response: Response):
     username = req.username.strip().lower()
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
+        cur.execute("SELECT id, password_hash FROM users WHERE username = %s", (username,))
         row = cur.fetchone()
 
     if not row or not verify_password(req.password, row["password_hash"]):

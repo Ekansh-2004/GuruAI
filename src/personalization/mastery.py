@@ -38,7 +38,7 @@ def load_global_profile(user_id: int) -> Dict:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT subject, topic, correct, total, ema_score FROM knowledge_profile WHERE user_id = ?",
+            "SELECT subject, topic, correct, total, ema_score FROM knowledge_profile WHERE user_id = %s",
             (user_id,)
         )
         profile = {}
@@ -58,10 +58,9 @@ def load_global_profile(user_id: int) -> Dict:
 def update_topic_performance(session_id: str, subject: str, topic: str, correct: bool):
     """Record quiz performance and update the EMA score for the topic globally in SQLite."""
     with get_db() as conn:
-        conn.execute("BEGIN IMMEDIATE")  # Write-lock to prevent concurrent stale reads
         cur = conn.cursor()
         # 1. Fetch user_id from the session
-        cur.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,))
+        cur.execute("SELECT user_id FROM sessions WHERE id = %s", (session_id,))
         sess_row = cur.fetchone()
         if not sess_row:
             return  # Session not found
@@ -72,7 +71,7 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
 
         # 2. Query existing topics under this subject for fuzzy matching
         cur.execute(
-            "SELECT topic FROM knowledge_profile WHERE user_id = ? AND subject = ?",
+            "SELECT topic FROM knowledge_profile WHERE user_id = %s AND subject = %s",
             (user_id, subj)
         )
         existing_topics = [r["topic"] for r in cur.fetchall()]
@@ -81,9 +80,12 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
         if matches:
             t = matches[0]
 
-        # 3. Retrieve stats
+        # 3. Retrieve stats. FOR UPDATE locks this row (if it already exists) so a
+        # concurrent quiz answer for the same topic can't read the same stale
+        # correct/total/ema_score and clobber this update (lost-update race).
         cur.execute(
-            "SELECT correct, total, ema_score FROM knowledge_profile WHERE user_id = ? AND subject = ? AND topic = ?",
+            "SELECT correct, total, ema_score FROM knowledge_profile "
+            "WHERE user_id = %s AND subject = %s AND topic = %s FOR UPDATE",
             (user_id, subj, t)
         )
         row = cur.fetchone()
@@ -106,7 +108,7 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
 
         # 4. Advance the spaced-repetition schedule for this review
         cur.execute(
-            "SELECT review_count FROM knowledge_profile WHERE user_id = ? AND subject = ? AND topic = ?",
+            "SELECT review_count FROM knowledge_profile WHERE user_id = %s AND subject = %s AND topic = %s",
             (user_id, subj, t)
         )
         prev_row = cur.fetchone()
@@ -116,13 +118,13 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
         review_interval_days = (next_review_date - now).days
 
         # 5. Insert or update entry
-        conn.execute(
+        cur.execute(
             """
             INSERT INTO knowledge_profile (
                 user_id, subject, topic, correct, total, ema_score,
                 last_reviewed_at, review_interval_days, review_count, next_review_date, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT(user_id, subject, topic) DO UPDATE SET
                 correct = excluded.correct,
                 total = excluded.total,
@@ -174,8 +176,9 @@ def delete_topic(user_id: int, subject: str, topic: str):
     subj_key = subject.strip().title()
     topic_key = topic.strip().title()
     with get_db() as conn:
-        conn.execute(
-            "DELETE FROM knowledge_profile WHERE user_id = ? AND subject = ? AND topic = ?",
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM knowledge_profile WHERE user_id = %s AND subject = %s AND topic = %s",
             (user_id, subj_key, topic_key)
         )
         conn.commit()
@@ -253,7 +256,7 @@ def list_topics_with_schedule(user_id: int) -> List[dict]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT {_TOPIC_COLUMNS} FROM knowledge_profile WHERE user_id = ?",
+            f"SELECT {_TOPIC_COLUMNS} FROM knowledge_profile WHERE user_id = %s",
             (user_id,)
         )
         rows = cur.fetchall()
@@ -265,7 +268,7 @@ def get_topic_by_id(topic_id: int, user_id: int) -> Optional[dict]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            f"SELECT {_TOPIC_COLUMNS} FROM knowledge_profile WHERE id = ? AND user_id = ?",
+            f"SELECT {_TOPIC_COLUMNS} FROM knowledge_profile WHERE id = %s AND user_id = %s",
             (topic_id, user_id)
         )
         row = cur.fetchone()
@@ -280,10 +283,12 @@ def update_ema(topic_id: int, user_id: int, score: float) -> Optional[dict]:
     Returns the updated topic dict, or None if no such topic exists for this user.
     """
     with get_db() as conn:
-        conn.execute("BEGIN IMMEDIATE")
         cur = conn.cursor()
+        # FOR UPDATE locks this row so a concurrent update to the same topic can't
+        # read the same stale values and clobber this one (see update_topic_performance).
         cur.execute(
-            "SELECT correct, total, ema_score, review_count FROM knowledge_profile WHERE id = ? AND user_id = ?",
+            "SELECT correct, total, ema_score, review_count FROM knowledge_profile "
+            "WHERE id = %s AND user_id = %s FOR UPDATE",
             (topic_id, user_id)
         )
         row = cur.fetchone()
@@ -303,10 +308,10 @@ def update_ema(topic_id: int, user_id: int, score: float) -> Optional[dict]:
         cur.execute(
             """
             UPDATE knowledge_profile
-            SET correct = ?, total = ?, ema_score = ?, last_reviewed_at = ?,
-                review_interval_days = ?, review_count = ?, next_review_date = ?,
+            SET correct = %s, total = %s, ema_score = %s, last_reviewed_at = %s,
+                review_interval_days = %s, review_count = %s, next_review_date = %s,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND user_id = ?
+            WHERE id = %s AND user_id = %s
             """,
             (
                 correct_val, total_val, new_ema, now,
@@ -432,7 +437,7 @@ def get_review_schedule(topic: str, user_id: int) -> dict:
             SELECT subject, topic, ema_score, correct, total, last_reviewed_at,
                    review_interval_days, review_count, next_review_date
             FROM knowledge_profile
-            WHERE user_id = ? AND topic = ?
+            WHERE user_id = %s AND topic = %s
             """,
             (user_id, topic_key)
         )

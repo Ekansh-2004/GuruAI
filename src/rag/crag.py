@@ -140,7 +140,7 @@ def build_crag_context(retriever, question: str) -> Tuple[str, str, list]:
     Full CRAG retrieval + grading pipeline.
 
     Steps:
-      1. Retrieve top-k docs from the FAISS retriever.
+      1. Retrieve top-k docs from the hybrid (pgvector + TF-IDF) retriever.
       2. Grade each doc with Gemini.
       3. If ≥1 relevant doc is found → return their combined text + "[Textbook]".
       4. If 0 relevant docs → trigger web search fallback.

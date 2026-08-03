@@ -16,7 +16,7 @@ def load_all_sessions(user_id: int) -> Dict:
 
         # 1. Single query: all sessions for this user
         cur.execute(
-            "SELECT id, title, updated_at FROM sessions WHERE user_id = ? ORDER BY updated_at DESC",
+            "SELECT id, title, updated_at FROM sessions WHERE user_id = %s ORDER BY updated_at DESC",
             (user_id,)
         )
         session_rows = cur.fetchall()
@@ -25,7 +25,7 @@ def load_all_sessions(user_id: int) -> Dict:
         if not session_ids:
             return {}
 
-        placeholders = ",".join("?" * len(session_ids))
+        placeholders = ",".join(["%s"] * len(session_ids))
 
         # 2. Single query: ALL messages across ALL sessions at once
         cur.execute(
@@ -73,8 +73,9 @@ def create_session(user_id: int, title: str = "New Chat") -> str:
     session_id = str(uuid.uuid4())
     now = str(datetime.now())
     with get_db() as conn:
-        conn.execute(
-            "INSERT INTO sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO sessions (id, user_id, title, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
             (session_id, user_id, title, now, now)
         )
         conn.commit()
@@ -91,7 +92,7 @@ def get_session_messages(session_id: str) -> List[Dict[str, str]]:
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT role, content, sources FROM messages WHERE session_id = ? ORDER BY id ASC",
+            "SELECT role, content, sources FROM messages WHERE session_id = %s ORDER BY id ASC",
             (session_id,)
         )
         messages = []
@@ -125,12 +126,13 @@ def add_message(session_id: str, role: str, content, sources: Optional[list] = N
     sources_json = json.dumps(sources) if sources else None
     now = str(datetime.now())
     with get_db() as conn:
-        conn.execute(
-            "INSERT INTO messages (session_id, role, content, sources) VALUES (?, ?, ?, ?)",
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO messages (session_id, role, content, sources) VALUES (%s, %s, %s, %s)",
             (session_id, role, content, sources_json)
         )
-        conn.execute(
-            "UPDATE sessions SET updated_at = ? WHERE id = ?",
+        cur.execute(
+            "UPDATE sessions SET updated_at = %s WHERE id = %s",
             (now, session_id)
         )
         conn.commit()
@@ -139,8 +141,9 @@ def add_message(session_id: str, role: str, content, sources: Optional[list] = N
 def update_session_title(session_id: str, new_title: str):
     """Rename a session in SQLite."""
     with get_db() as conn:
-        conn.execute(
-            "UPDATE sessions SET title = ? WHERE id = ?",
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE sessions SET title = %s WHERE id = %s",
             (new_title, session_id)
         )
         conn.commit()
@@ -149,7 +152,8 @@ def update_session_title(session_id: str, new_title: str):
 def delete_session(session_id: str):
     """Delete a chat session entirely from SQLite, including its isolated FAISS database."""
     with get_db() as conn:
-        conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM sessions WHERE id = %s", (session_id,))
         conn.commit()
 
     # Attempt to remove the FAISS vector database. Cleanup failure must not
@@ -164,8 +168,9 @@ def save_quiz(session_id: str, quiz: dict):
     """Persist the generated quiz inside the session in SQLite so it survives navigation."""
     quiz_str = json.dumps(quiz)
     with get_db() as conn:
-        conn.execute(
-            "UPDATE sessions SET quiz_json = ? WHERE id = ?",
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE sessions SET quiz_json = %s WHERE id = %s",
             (quiz_str, session_id)
         )
         conn.commit()
@@ -175,7 +180,7 @@ def get_quiz(session_id: str) -> dict:
     """Retrieve the saved quiz for a session from SQLite, or empty if none."""
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT quiz_json FROM sessions WHERE id = ?", (session_id,))
+        cur.execute("SELECT quiz_json FROM sessions WHERE id = %s", (session_id,))
         row = cur.fetchone()
         if row and row["quiz_json"]:
             try:

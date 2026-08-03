@@ -60,7 +60,7 @@ def verify_session_ownership(session_id: str, user_id: int) -> None:
     """Raises 403/404 if the session does not belong to the authenticated user."""
     with get_db() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,))
+        cur.execute("SELECT user_id FROM sessions WHERE id = %s", (session_id,))
         row = cur.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Session not found")

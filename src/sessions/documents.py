@@ -27,10 +27,11 @@ def add_document(
     a duplicate, matching the (session_id, name) uniqueness already in place.
     """
     with get_db() as conn:
-        conn.execute(
+        cur = conn.cursor()
+        cur.execute(
             """
             INSERT INTO documents (session_id, doc_id, name, size, file_type, status, storage_path, chunk_count, error)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT(session_id, name) DO UPDATE SET
                 doc_id = excluded.doc_id,
                 size = excluded.size,
@@ -51,7 +52,7 @@ def get_session_documents(session_id: str) -> list:
         cur = conn.cursor()
         cur.execute(
             "SELECT doc_id, name, size, file_type, status, storage_path, chunk_count, error, created_at "
-            "FROM documents WHERE session_id = ? ORDER BY id ASC",
+            "FROM documents WHERE session_id = %s ORDER BY id ASC",
             (session_id,)
         )
         return [
@@ -77,5 +78,6 @@ def clear_session_knowledge_base(session_id: str):
 
     # 2. Clear the SQLite rows
     with get_db() as conn:
-        conn.execute("DELETE FROM documents WHERE session_id = ?", (session_id,))
+        cur = conn.cursor()
+        cur.execute("DELETE FROM documents WHERE session_id = %s", (session_id,))
         conn.commit()
