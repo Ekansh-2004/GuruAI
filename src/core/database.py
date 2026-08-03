@@ -3,7 +3,14 @@ from contextlib import contextmanager
 
 import psycopg2
 import psycopg2.extras
+from dotenv import load_dotenv
 from pgvector.psycopg2 import register_vector
+
+# Load .env here too (not just in config.py) — this module reads DATABASE_URL
+# at import time, and which module gets imported first (and therefore whose
+# load_dotenv() call runs first) isn't guaranteed, so this can't rely on
+# config.py having already loaded it.
+load_dotenv()
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql://guruai:guruai_dev_pw@localhost:5432/guruai_dev"
