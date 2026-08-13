@@ -8,15 +8,15 @@ GuruAI (also known as "The Scholar") is an advanced context-aware, adaptive tuto
 - **Adaptive Knowledge Tracking**: Implements an Exponential Moving Average (EMA) algorithm to track sustained mastery levels across subjects and topics, categorizing your knowledge as *Strong*, *Average*, or *Weak*.
 - **Personalized Topic Tutor**: Automatically scales topic explanations and generates difficulty-adjusted quizzes based precisely on your current tracked mastery level.
 - **Persistent User Memory**: An embedded memory system extracts and retains your learning preferences, background, and goals to provide deeply contextual interactions across all sessions globally.
-- **Session & Multi-user Management**: Supports robust handling of distinct chat sessions, independent vector spaces per session, and multi-tenant capabilities (SQLite, PBKDF2-HMAC-SHA256 password hashing, HMAC-signed session tokens).
+- **Session & Multi-user Management**: Supports robust handling of distinct chat sessions, independent vector spaces per session, and multi-tenant capabilities (PostgreSQL, PBKDF2-HMAC-SHA256 password hashing, HMAC-signed session tokens).
 - **Modern UI/UX**: Sleek, responsive, full-screen UI with interactive widgets, multi-view navigation, and dynamic dark/light mode toggling built with TailwindCSS.
 
 ## Tech Stack
 - **Backend Framework**: FastAPI, Python
 - **AI & Orchestration**: Langchain
-- **Language Models**: Google GenAI, Groq
-- **Embeddings**: HuggingFace (`sentence-transformers`)
-- **Vector Database**: FAISS (CPU)
+- **Language Models**: Groq (`llama-3.3-70b-versatile`) for answers/quizzes; Google Gemini for the CRAG relevance grader
+- **Embeddings**: Google Gemini `gemini-embedding-001` (hosted API, 768 dims), via `langchain-google-genai`
+- **Vector Database**: PostgreSQL + `pgvector` extension
 - **Document Processing**: PyPDF, docx2txt
 - **Frontend**: HTML5, Vanilla JavaScript, TailwindCSS
 
@@ -44,7 +44,12 @@ Create a `.env` file in the root directory and add your required API keys:
 ```env
 GOOGLE_API_KEY=your_google_api_key
 GROQ_API_KEY=your_groq_api_key
+JWT_SECRET_KEY=your_jwt_secret
+DATABASE_URL=postgresql://guruai:guruai_dev_pw@localhost:5432/guruai_dev
 ```
+`JWT_SECRET_KEY` and `DATABASE_URL` each fall back to a hardcoded local default if
+unset, but you should set both explicitly outside of local dev. `DATABASE_URL`
+must point at a Postgres instance with the `pgvector` extension available.
 
 5. **Run the Application**
 ```bash
@@ -57,9 +62,12 @@ Open your browser and navigate to [http://localhost:8000](http://localhost:8000)
 
 ## Directory Structure
 - `src/`: Core application logic.
-  - `rag/`: Implementation of CRAG, RAG chains, FAISS embedders, document loaders, and dynamic quiz generation.
+  - `rag/`: Implementation of CRAG, RAG chains, the pgvector-backed embedder, document loaders, and dynamic quiz generation.
   - `personalization/`: Mastery tracker (EMA algorithm) and persistent user memory management.
   - `auth/`: Authentication and multi-user configurations.
 - `static/`: Frontend HTML, JavaScript, and styling.
 - `server.py`: FastAPI server configuration and API route definitions.
-- `faiss_index_db/`: Local storage directory for session-specific FAISS vector indices.
+
+`faiss_index_db/` is a leftover local directory from before the Postgres/pgvector
+migration; the app no longer reads or writes it. Chunk embeddings now live in the
+`document_chunks` table in PostgreSQL.

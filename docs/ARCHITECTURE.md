@@ -22,8 +22,8 @@ server.py                     ← wires 11 routers together, ~60 lines, no logic
    │      ├── src/personalization/*      ← mastery (EMA) + spaced repetition
    │      └── src/rag/*                  ← retrieval, CRAG grading, the answer chain
    │
-   ├── SQLite (scholar.db)     ← all durable state
-   └── FAISS (faiss_index_db/) ← per-session vector indexes on disk
+   ├── PostgreSQL (DATABASE_URL) ← all durable state
+   └── pgvector (document_chunks) ← chunk embeddings, queried via cosine distance
 ```
 
 Two external LLMs do the thinking:
@@ -41,9 +41,9 @@ calls the one below it.**
 
 | Layer | Lives in | Knows about | Does NOT know about |
 |-------|----------|-------------|---------------------|
-| HTTP | `src/api/routers/` | requests, cookies, status codes | SQL, FAISS internals |
+| HTTP | `src/api/routers/` | requests, cookies, status codes | SQL, pgvector internals |
 | Domain | `src/sessions/`, `src/personalization/` | SQL rows, business rules | HTTP, LLMs |
-| RAG | `src/rag/` | FAISS, LLM chains, prompts | HTTP, the SQLite schema |
+| RAG | `src/rag/` | pgvector, LLM chains, prompts | HTTP, the Postgres schema |
 | Infra | `src/core/`, `src/auth/` | DB connections, model singletons, tokens | everything above |
 
 When you read a router and it looks thin — good, it's supposed to. The logic
@@ -103,16 +103,16 @@ if not retriever:
     raise HTTPException(status_code=400, "No database built ...")
 ```
 
-Building a retriever means loading a FAISS index from disk and fitting a TF-IDF
-model over it — far too slow to redo every message. So
-[src/api/retriever_cache.py](../src/api/retriever_cache.py) keeps an in-process
-LRU cache (max 32). First call for a session builds and caches it; later calls
-reuse it. If the session never uploaded documents, `get()` returns `None` and the
-request stops here with a `400`.
+Building a retriever means querying the session's chunks out of the `document_chunks`
+table in Postgres and fitting a TF-IDF model over them — far too slow to redo every
+message. So [src/api/retriever_cache.py](../src/api/retriever_cache.py) keeps an
+in-process LRU cache (max 32). First call for a session builds and caches it; later
+calls reuse it. If the session never uploaded documents, `get()` returns `None` and
+the request stops here with a `400`.
 
 > This is the layer boundary in action: the router asks the cache for "the
-> retriever for this session" and doesn't know or care that a FAISS `.faiss` file
-> exists on disk.
+> retriever for this session" and doesn't know or care that the chunks live as
+> rows in a Postgres table queried via pgvector.
 
 ### 4. Assemble the student's context
 
@@ -159,7 +159,8 @@ most interesting thing in the codebase. It runs a three-stage pipeline:
 
 **Stage A — Hybrid retrieval** ([src/rag/retriever.py](../src/rag/retriever.py)).
 `retriever.invoke(question)` runs *two* searches and fuses them:
-- **Dense** (FAISS): semantic similarity via embeddings — catches meaning.
+- **Dense** (pgvector): semantic similarity via Gemini embeddings, queried with
+  cosine-distance (`<=>`) SQL — catches meaning.
 - **Sparse** (TF-IDF): keyword overlap — catches exact terms the dense model
   might blur.
 - **`reciprocal_rank_fusion`** merges the two ranked lists: each doc scores
@@ -234,8 +235,9 @@ open [src/api/routers/sessions.py](../src/api/routers/sessions.py),
 3. A per-file row is written via
    [`documents.add_document`](../src/sessions/documents.py). A file that fails to
    parse is recorded as `status="failed"` and doesn't block the others.
-4. [`embedder.create_vectorstore`](../src/rag/embedder.py) embeds all chunks and
-   writes/merges the session's FAISS index to disk.
+4. [`embedder.create_vectorstore`](../src/rag/embedder.py) embeds all chunks
+   (Gemini `gemini-embedding-001`) and inserts them into the `document_chunks`
+   table in Postgres.
 5. `retriever_cache.refresh(...)` rebuilds the cached retriever so the next chat
    turn sees the new documents.
 
