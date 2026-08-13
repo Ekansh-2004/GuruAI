@@ -14,7 +14,7 @@ GuruAI (also known as "The Scholar") is an advanced context-aware, adaptive tuto
 ## Tech Stack
 - **Backend Framework**: FastAPI, Python
 - **AI & Orchestration**: Langchain
-- **Language Models**: Groq (`llama-3.3-70b-versatile`) for answers/quizzes; Google Gemini for the CRAG relevance grader
+- **Language Models**: Groq (`openai/gpt-oss-120b`) for answers/quizzes; Google Gemini for the CRAG relevance grader
 - **Embeddings**: Google Gemini `gemini-embedding-001` (hosted API, 768 dims), via `langchain-google-genai`
 - **Vector Database**: PostgreSQL + `pgvector` extension
 - **Document Processing**: PyPDF, docx2txt

@@ -8,18 +8,19 @@ client pool connections.
 """
 
 from langchain_groq import ChatGroq
+
 from src.core.config import GROQ_API_KEY
 
 # ── Deterministic (temperature ≈ 0, the default) ──
 llm_default = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-120b",
     api_key=GROQ_API_KEY,
     max_retries=0,
 )
 
 # ── Balanced creativity (explanations) ──
 llm_balanced = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-120b",
     api_key=GROQ_API_KEY,
     max_retries=0,
     temperature=0.5,
@@ -27,7 +28,7 @@ llm_balanced = ChatGroq(
 
 # ── Creative (quizzes — higher variety) ──
 llm_creative = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-120b",
     api_key=GROQ_API_KEY,
     max_retries=0,
     temperature=0.7,
