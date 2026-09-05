@@ -10,14 +10,15 @@ from src.rag.embedder import load_existing_vectorstore
 
 class QuizQuestion(BaseModel):
     subject: str = Field(description="The broad subject this question belongs to.")
-    topic: str = Field(description="The specific sub-topic or concept. Limit to 1-3 words.")
+    topic: str = Field(description="A broad topic area (1-3 words) from a short, reusable list "
+                                    "(at most 10-15 per subject) — NOT a narrow, question-specific concept.")
     question: str = Field(description="The question text")
     options: List[str] = Field(description="Exactly 4 options for the question")
     correct_index: int = Field(description="Index of the correct option (0 to 3)")
     explanation: str = Field(description="Detailed explanation of why the answer is correct and others are wrong")
 
 class Quiz(BaseModel):
-    questions: List[QuizQuestion] = Field(description="List of 4 relevant questions based on chat history")
+    questions: List[QuizQuestion] = Field(description="List of 6 relevant questions based on chat history")
 
 def generate_quiz_for_session_db(session_id: str, user_subjects: Optional[List[str]] = None) -> dict:
     """Generates a JSON-structured quiz drawing directly from the session's uploaded chunks."""
@@ -66,13 +67,20 @@ Assign a broad CS subject label (e.g., "Cyber Security", "Machine Learning", "Da
 RULE 1 — CONTENT SOURCE (most important):
 Every single question, option, and answer MUST be based ONLY on the textbook excerpts below.
 Do NOT use your general knowledge. Do NOT add information not present in the text.
-If the text is about V2X communication, ALL 4 questions must be about V2X communication.
+If the text is about V2X communication, ALL 6 questions must be about V2X communication.
 
 RULE 2 — SUBJECT LABELLING:
 {subject_label_rule}
 
-RULE 3 — TOPIC FIELD:
-The 'topic' field should be a specific concept from the textbook (1-3 words, e.g. "DSRC Protocol", "V2X Architecture").
+RULE 3 — TOPIC FIELD (keep this BROAD, not per-question):
+Before writing questions, first decide on a short list of broad topic areas this content covers —
+at most 10-15 for the whole subject, and usually just 2-5 for a single document's worth of content
+(e.g. "V2X Architecture", "DSRC Protocol", "Network Security" — NOT narrow one-off concepts like
+"DSRC Frequency Band" or "IEEE 802.11p Header Format"). Then assign each question's 'topic' field to
+one of those broad topics. Multiple questions should share the same topic where the content overlaps —
+do NOT invent a new, more specific topic for every single question.
+
+Generate exactly 6 questions.
 
 Textbook Excerpts:
 {text_corpus}
