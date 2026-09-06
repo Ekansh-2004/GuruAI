@@ -1,9 +1,9 @@
 """The subjects a user has registered for study."""
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from src.api.deps import get_current_user
 from src.api.schemas import SubjectRequest
-from src.personalization import user_memory
+from src.personalization import topic_graph_seed, user_memory
 
 router = APIRouter(prefix="/api/subjects", tags=["subjects"])
 
@@ -15,9 +15,19 @@ def get_subjects(user_id: int = Depends(get_current_user)):
 
 
 @router.post("")
-def add_subject(req: SubjectRequest, user_id: int = Depends(get_current_user)):
-    """Add a new subject to the user's study profile."""
-    return {"subjects": user_memory.save_subject(user_id, req.subject)}
+def add_subject(
+    req: SubjectRequest,
+    background_tasks: BackgroundTasks,
+    user_id: int = Depends(get_current_user),
+):
+    """Add a new subject to the user's study profile.
+
+    Also kicks off curriculum-graph seeding for the subject in the background
+    (no-op if it's already seeded) — the response doesn't wait on it.
+    """
+    subjects = user_memory.save_subject(user_id, req.subject)
+    background_tasks.add_task(topic_graph_seed.seed_subject_graph, req.subject)
+    return {"subjects": subjects}
 
 
 @router.delete("/{subject}")

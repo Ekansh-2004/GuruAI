@@ -4,7 +4,8 @@ from src.core.llm import llm_default
 from src.rag.crag import build_crag_context           # ← CRAG grading step
 
 
-def build_rag_chain(retriever, knowledge_profile_summary: str = "", user_memory_context: str = ""):
+def build_rag_chain(retriever, knowledge_profile_summary: str = "", user_memory_context: str = "",
+                     learning_guidance: str = ""):
     # Same Groq / Llama model as before — only the retrieval step changes.
     model = llm_default
 
@@ -67,7 +68,21 @@ CRITICAL RULES FOR ADAPTATION (YOU MUST OBEY THESE STRICTLY):
 
 Your tone MUST drastically change depending on the score. A WEAK explanation and a STRONG explanation MUST sound like they were written by two entirely different people."""
 
-    system_prompt = base_system + adaptive_section
+    # ── 3b. Dedicated advisor guidance (learning_advisor.py) ────────────────────
+    # A separate pre-processing call already reasoned over the profile + the
+    # subject's prerequisite graph together — treat its conclusion as
+    # authoritative on top of (not instead of) the raw-profile rules above,
+    # since this is empty whenever that call was skipped or failed.
+    guidance_section = ""
+    if learning_guidance:
+        guidance_section = f"""
+
+LEARNING GUIDANCE (from a dedicated mastery + prerequisite analysis — treat as authoritative):
+{learning_guidance}
+Follow this guidance for depth, tone, and pacing. It already accounts for the student's mastery
+and any shaky prerequisites, so you do not need to re-derive that from the raw profile yourself."""
+
+    system_prompt = base_system + adaptive_section + guidance_section
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),

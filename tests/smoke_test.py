@@ -217,14 +217,19 @@ check("bob cannot review alice's topic",
       other.post(f"/api/topics/{topic_id}/mark-reviewed", json={"score": 5}).status_code, 404)
 
 # ── Subjects ──────────────────────────────────────────────────────────
+# Both names used here are in topic_graph_seed.CURATED_SEEDS — adding a
+# subject kicks off curriculum-graph seeding as a background task, which
+# TestClient runs synchronously within the request; an uncurated name would
+# fall through to a live Groq call and break this test's "no API keys needed"
+# guarantee.
 section("subjects")
 check("no subjects initially", client.get("/api/subjects").json(), {"subjects": []})
-r = client.post("/api/subjects", json={"subject": "Chemistry"})
-check("add subject", r.json()["subjects"], ["Chemistry"])
-client.post("/api/subjects", json={"subject": "Physics"})
-check("two subjects", sorted(client.get("/api/subjects").json()["subjects"]), ["Chemistry", "Physics"])
-r = client.delete("/api/subjects/Chemistry")
-check("delete subject", r.json()["subjects"], ["Physics"])
+r = client.post("/api/subjects", json={"subject": "Data Structures"})
+check("add subject", r.json()["subjects"], ["Data Structures"])
+client.post("/api/subjects", json={"subject": "Operating Systems"})
+check("two subjects", sorted(client.get("/api/subjects").json()["subjects"]), ["Data Structures", "Operating Systems"])
+r = client.delete("/api/subjects/Data Structures")
+check("delete subject", r.json()["subjects"], ["Operating Systems"])
 check("bob's subjects isolated", other.get("/api/subjects").json(), {"subjects": []})
 
 # ── Memory (DB-only paths; extraction needs an LLM) ───────────────────

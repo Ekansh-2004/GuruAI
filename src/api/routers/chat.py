@@ -11,6 +11,7 @@ from src.api.schemas import ChatRequest
 from src.personalization import mastery, user_memory
 from src.rag.chain import build_rag_chain
 from src.rag.crag import build_crag_context
+from src.rag.learning_advisor import build_learning_guidance
 from src.sessions import store
 
 router = APIRouter(prefix="/api", tags=["chat"])
@@ -38,10 +39,16 @@ def chat(req: ChatRequest, user_id: int = Depends(get_current_user)):
     profile_summary = mastery.build_profile_summary(user_id)
     print(profile_summary)
     memory_context = user_memory.get_memory_as_system_context(user_id)
+    # Dedicated pre-processing call: reasons over the profile + prerequisite
+    # graph together before the answer-generation call even starts. Runs
+    # before streaming begins, so it adds its own latency to every request;
+    # returns "" (skip/fallback) if there's no profile yet or the call fails.
+    learning_guidance = build_learning_guidance(user_id, req.question)
     chain = build_rag_chain(
         retriever,
         knowledge_profile_summary=profile_summary,
         user_memory_context=memory_context,
+        learning_guidance=learning_guidance,
     )
 
     history_raw = store.get_session_messages(req.session_id)

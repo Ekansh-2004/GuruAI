@@ -175,6 +175,27 @@ def get_subject_graph(subject: str) -> Dict:
     }
 
 
+def format_graph_context(subjects: List[str]) -> str:
+    """Serialize the prerequisite structure for a set of subjects into plain
+    text, for feeding to an LLM (e.g. the learning-guidance advisor) that will
+    reason over it directly rather than needing exact topic-name lookups.
+
+    Subjects with no seeded graph yet are silently skipped.
+    """
+    lines = []
+    for subject in subjects:
+        graph = get_subject_graph(subject)
+        if not graph["edges"]:
+            continue
+        lines.append(f"Subject: {graph['subject']}")
+        for edge in graph["edges"]:
+            if edge["relation"] == "prerequisite_of":
+                lines.append(f'  "{edge["from"]}" is a prerequisite of "{edge["to"]}"')
+            else:
+                lines.append(f'  "{edge["from"]}" is related to "{edge["to"]}" ({edge["relation"]})')
+    return "\n".join(lines)
+
+
 def prioritize_prerequisites(due_topics: List[dict]) -> List[dict]:
     """Reorder a due-topics list (from mastery.list_topics_with_schedule) so a
     topic's still-weak prerequisites are bumped ahead of it.
