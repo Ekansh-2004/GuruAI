@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.core.database import get_db
+from src.personalization import topic_graph
 from src.personalization.spaced_rep import SpacedRepetitionScheduler
 
 # EMA smoothing factor
@@ -77,6 +78,14 @@ def update_topic_performance(session_id: str, subject: str, topic: str, correct:
         existing_topics = [r["topic"] for r in cur.fetchall()]
 
         matches = difflib.get_close_matches(t, existing_topics, n=1, cutoff=0.85)
+        if not matches:
+            # No match against this user's own prior topics — before minting a new
+            # freeform name, check the subject's curriculum graph (topic_graph.py) too,
+            # so a brand-new topic snaps onto the graph's canonical spelling instead of
+            # drifting into yet another near-duplicate. This is what lets
+            # build_review_queue's prerequisite reordering actually find matches later.
+            graph_topics = topic_graph.get_subject_node_names(subj)
+            matches = difflib.get_close_matches(t, graph_topics, n=1, cutoff=0.85)
         if matches:
             t = matches[0]
 
@@ -167,6 +176,50 @@ def get_performance_areas(user_id: int) -> Dict:
             "average": sorted(average, key=lambda x: x[1]),
             "strong": sorted(strong, key=lambda x: x[1], reverse=True)
         }
+
+    return result
+
+
+def get_root_cause_gaps(user_id: int) -> Dict:
+    """For each weak topic, check whether any of its prerequisites (per the
+    curriculum graph) are also weak or entirely unproven — those are the
+    actual root cause, not the topic the student happened to get quizzed on.
+
+    Returns {subject: [{"topic": ..., "score": ..., "blocked_by": [prereq, ...]}]},
+    subjects/topics with nothing to flag are simply absent. Additive — doesn't
+    change get_performance_areas()'s existing shape, since other code already
+    depends on that.
+    """
+    profile = load_global_profile(user_id)
+    result = {}
+    for subject, topics in profile.items():
+        flagged = []
+        for topic, stats in topics.items():
+            if stats["total"] == 0:
+                continue
+            score = stats["ema_score"] if stats.get("ema_score") is not None else (
+                stats["correct"] / stats["total"]
+            )
+            if score >= 0.5:
+                continue
+
+            blocked_by = []
+            for prereq in topic_graph.get_prerequisite_chain(subject, topic):
+                prereq_stats = topics.get(prereq)
+                if prereq_stats is None:
+                    blocked_by.append(prereq)  # never attempted — unproven, treat as a gap
+                    continue
+                prereq_score = prereq_stats["ema_score"] if prereq_stats.get("ema_score") is not None else (
+                    prereq_stats["correct"] / prereq_stats["total"] if prereq_stats["total"] else 0.0
+                )
+                if prereq_score < 0.5:
+                    blocked_by.append(prereq)
+
+            if blocked_by:
+                flagged.append({"topic": topic, "score": score, "blocked_by": blocked_by})
+
+        if flagged:
+            result[subject] = flagged
 
     return result
 
@@ -340,6 +393,10 @@ def build_review_queue(user_id: int, category: str = "all", limit: int = 10, sor
         due_topics.sort(key=lambda t: t["days_until_review"])
     else:
         due_topics.sort(key=lambda t: t["last_reviewed"] or "", reverse=True)
+
+    # Bump a still-weak prerequisite ahead of the (already-due, already-weak)
+    # topic it blocks, within the ordering above — see topic_graph.py.
+    due_topics = topic_graph.prioritize_prerequisites(due_topics)
 
     overdue_count = sum(1 for t in topics if t["days_until_review"] < 0)
 

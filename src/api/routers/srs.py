@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.deps import get_current_user
 from src.api.schemas import MarkReviewedRequest
-from src.personalization import mastery
+from src.personalization import mastery, topic_graph
 
 router = APIRouter(prefix="/api", tags=["srs"])
 
@@ -53,3 +53,17 @@ def mark_topic_reviewed(
 def get_topics_statistics(user_id: int = Depends(get_current_user)) -> dict:
     """Return dashboard stats summarizing the user's spaced-repetition progress."""
     return mastery.get_topic_statistics(user_id)
+
+
+@router.get("/topics/graph")
+def get_topics_graph(
+    subject: str = Query(..., min_length=1),
+    user_id: int = Depends(get_current_user),
+) -> dict:
+    """Return the curriculum graph (nodes/edges) for a subject, for a future
+    knowledge-map visualization. The graph is shared across users (not scoped
+    to user_id) — auth here just gates read access to a logged-in user, same
+    as every other endpoint. Empty nodes/edges if the subject hasn't been
+    seeded yet (see topic_graph_seed.py).
+    """
+    return topic_graph.get_subject_graph(subject)

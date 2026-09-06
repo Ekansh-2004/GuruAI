@@ -48,6 +48,10 @@
   "GET"
  ],
  [
+  "/api/profile/gaps",
+  "GET"
+ ],
+ [
   "/api/profile/{subject}/{topic}",
   "DELETE"
  ],
@@ -122,6 +126,10 @@
  [
   "/api/topic/quiz",
   "POST"
+ ],
+ [
+  "/api/topics/graph",
+  "GET"
  ],
  [
   "/api/topics/statistics",
