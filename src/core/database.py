@@ -95,6 +95,24 @@ def init_db():
         UNIQUE(user_id, subject, topic)
     );
 
+    -- Curriculum graph: shared per-subject topic relationships (prerequisites,
+    -- related topics). Not per-user — per-user mastery stays in knowledge_profile.
+    -- Keyed on the same (subject, topic) text pairs knowledge_profile uses,
+    -- normalized the same way (see mastery.py's .strip().title()); there's no
+    -- separate topics dimension table to hang a foreign key off of.
+    CREATE TABLE IF NOT EXISTS topic_edges (
+        id SERIAL PRIMARY KEY,
+        subject TEXT NOT NULL,
+        from_topic TEXT NOT NULL,       -- the prerequisite
+        to_topic TEXT NOT NULL,         -- the topic that depends on it
+        relation TEXT NOT NULL DEFAULT 'prerequisite_of',
+        weight REAL DEFAULT 1.0,
+        source TEXT NOT NULL DEFAULT 'llm',  -- 'seed' | 'llm' | 'manual' — provenance,
+                                              -- so a future regen only touches 'llm' rows
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(subject, from_topic, to_topic, relation)
+    );
+
     CREATE TABLE IF NOT EXISTS user_subjects (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
@@ -144,6 +162,9 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_user_memories_user_id    ON user_memories(user_id);
     CREATE INDEX IF NOT EXISTS idx_user_subjects_user_id    ON user_subjects(user_id);
     CREATE INDEX IF NOT EXISTS idx_document_chunks_session_id ON document_chunks(session_id);
+    CREATE INDEX IF NOT EXISTS idx_topic_edges_subject      ON topic_edges(subject);
+    CREATE INDEX IF NOT EXISTS idx_topic_edges_from         ON topic_edges(subject, from_topic);
+    CREATE INDEX IF NOT EXISTS idx_topic_edges_to           ON topic_edges(subject, to_topic);
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_session_name ON documents(session_id, name);
     """
